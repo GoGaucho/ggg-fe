@@ -1,0 +1,290 @@
+<template>
+  <div class="selector">
+    <div class="loading" v-if="loading">Loading ...</div>
+    <div class="row">
+      <template v-if="!GETable">
+        <strong>Find Course by </strong>
+        <el-select style="width: 150px;" filterable @change="change('by')" v-model="by">
+          <el-option value="Department" label="Department" />
+          <el-option value="GE" label="GE" />
+        </el-select>
+      </template>
+      <template v-if="by">
+        <strong>Quarter:</strong>
+        <el-select filterable @change="change('quarter')" v-model="query.quarter">
+          <el-option v-for="o in options.quarter" :value="o.key" :label="o.name" />
+        </el-select>
+      </template>
+    </div>
+    
+    <div v-if="by == 'Department'" class="row">
+      <template v-if="options.department.length">
+        <strong>Department:</strong>
+        <el-select style="width: 150px;" filterable @change="change('department')" v-model="query.department">
+          <el-option v-for="o in options.department" :value="o.key" :label="o.name" />
+        </el-select>
+      </template>
+    </div>
+
+    <div v-if="by == 'GE'" class="row">
+      <template v-if="options.college.length">
+        <strong>College:</strong>
+        <el-select style="width: 150px;" filterable @change="change('college')" v-model="query.college">
+          <el-option v-for="o in options.college" :value="o.key" :label="o.name" />
+        </el-select>
+      </template>
+      <template v-if="options.GE.length">
+        <strong>GE:</strong>
+        <el-select style="width: 50%;" multiple filterable @change="change('GE')" v-model="query.GE">
+          <el-option v-for="o in options.GE" :value="o.key" :label="o.name" />
+        </el-select>
+      </template>
+    </div>
+
+    <template v-if="options.course.length">
+      <strong>Course:</strong>
+      <el-select filterable @change="change('course')" v-model="query.course">
+        <el-option v-for="o in options.course" :value="o.key" :label="o.name" />
+      </el-select>
+    </template>
+  </div>
+</template>
+
+<script>
+import { mapState, mapMutations } from 'vuex'
+
+var GEColl = [];
+var GECode = [];
+var season = ['', 'Winter', 'Spring', 'Summer', 'Fall'];
+
+export default {
+  name: 'Selector',
+  props: ['GETable'],
+  data() {
+    return {
+      loading: false,
+      by: '',
+      query: {
+        quarter: '',
+        department: '',
+        course: '',
+        college: '',
+        GE: [],
+      },
+      options: {
+        quarter: [],
+        department: [],
+        course: [],
+        college: [],
+        GE: [],
+      }
+    }
+  },
+  mounted() {
+    if (this.GETable) this.by = "GE";
+    else this.by = "Department";
+    this.change("by");
+  },
+  methods: {
+    ...mapMutations(['setCourse', 'setQuarter']),
+    change: function(key) {
+      this.setCourse(null); // clear current course
+      if (key == "by") {
+        this.query.quarter = '';
+        this.options.department = [];
+        this.options.course = [];
+        this.getList('quarter');
+      }
+      if (key == "quarter") {
+        this.query.department = '';
+        this.query.college = '';
+        this.options.department = [];
+        this.options.course = [];
+        this.options.college = [];
+        this.options.GE = [];
+        this.setQuarter(this.query.quarter);
+        if (this.by == "GE") this.getList('college');
+        else this.getList('department');
+      }
+      if (key == "department") {
+        this.query.course = '';
+        this.options.course = [];
+        this.getList('course');
+      }
+      if (key == "college") {
+        this.query.GE = '';
+        this.options.GE = [];
+        this.options.course = [];
+        this.getList('GE');
+      }
+      if (key == "GE") {
+        this.query.course = '';
+        this.options.course = [];
+        if (this.GETable) {
+          this.$emit("select", this.query.quarter, this.query.college, this.query.GE);
+          return;
+        }
+        if (this.query.GE.length) this.getList('course');
+      }
+      if (key == "course") {
+        this.loading = true;
+        axios // get course info
+          .get("/api/sche/getClassByID", {params: {
+            q: this.query.quarter,
+            id: this.query.course,
+          }})
+          .then((resp) => {
+            this.loading = false;
+            this.setCourse(resp.data);
+            this.$emit("select");
+          })
+          .catch((error) => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          })
+      }
+    },
+    getList: function(key) {
+      this.loading = true;
+      if (key == 'quarter') {
+        axios
+          .get("/api/sche/getQuarter")
+          .then((resp) => {
+            this.options.quarter = [];
+            resp.data.qlist.forEach(q => {
+              let year = Math.floor(q / 10);
+              let s = season[q%10];
+              this.options.quarter.push({name: year + s, key: q});
+            })
+            this.query.quarter = resp.data.default;
+            setTimeout(this.change('quarter'), 10);
+            this.loading = false;
+          })
+          .catch((error) => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          })
+      }
+      if (key == 'department') {
+        axios // get department list
+          .get("/api/sche/getDeptList?q=" + this.query.quarter)
+          .then((resp) => {
+            this.options.department = [];
+            for (let d of resp.data) {
+              this.options.department.push({ name: d, key: d });
+            }
+            this.options.department.sort();
+            this.loading = false;
+          })
+          .catch((error) => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          })
+      }
+      if (key == 'course' && this.by == "Department") {
+        let deptCode = this.query.department.replace(" ", "_");
+        axios // get department list
+          .get("/api/sche/getClassByDept", {params: {
+              q: this.query.quarter,
+              dept: deptCode,
+            }})
+          .then((resp) => {
+            this.options.course = [];
+            for (let c of resp.data) {
+              this.options.course.push({ name: c.id, key: c.id });
+            }
+            this.options.course.sort();
+            this.loading = false;
+          })
+          .catch((error) => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          })
+      }
+      if (key == 'college') {
+        axios // get GE list
+          .get("/api/sche/getGEList?q=" + this.query.quarter)
+          .then((resp) => {
+            this.options.college = [];
+            GEColl = resp.data;
+            for (let c of resp.data) {
+              this.options.college.push({ name: c.col, key: c.col });
+            }
+            this.loading = false;
+          })
+          .catch((error) => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          })
+      }
+      if (key == 'GE') {
+        this.options.GE = [];
+        for (let i in GEColl) {
+          if (GEColl[i].col == this.query.college) {
+            GECode = GEColl[i].codes;
+            break;
+          }
+        }
+        for (let i in GECode) {
+          this.options.GE.push({ name: GECode[i].code, key: GECode[i].code });
+        }
+        this.options.GE.sort();
+        this.loading = false;
+      }
+      if (key == 'course' && this.by == "GE") {
+        this.options.course = [];
+        let count = [];
+        for (let i in GECode) {
+          if (this.query.GE.includes(GECode[i].code)) {
+            for (let course of GECode[i].list) {
+              if (count[course]) count[course]++;
+              else count[course] = 1;
+            }
+          }
+        }
+        for (let i in count) {
+          if (count[i] == this.query.GE.length) {
+            this.options.course.push({ name: i, key: i });
+          }
+        }
+        this.options.course.sort();
+        this.loading = false;
+      }
+    }
+  }
+}
+</script>
+
+<style scoped>
+div.selector {
+  position: relative;
+  padding: 1px 10px 10px;
+
+  border-radius: 5px;
+  text-align: left;
+
+  box-shadow: 1px 1px 3px #999;
+  background-color: #fff;
+}
+
+div.row {
+  display: flex;
+  width: 100%;
+  margin: 20px 0;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+div.loading {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  color: #036;
+  font-size: 1.2rem;
+}
+
+h3, strong {
+  margin: 0 10px;
+  color: #036;
+}
+</style>
