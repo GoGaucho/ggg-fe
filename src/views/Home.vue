@@ -1,7 +1,6 @@
 <template>
   <div class="home">
-    <FindCourse v-if="findCourse" @toggle="findCourse = !findCourse" />
-    <GETable v-else @toggle="findCourse = !findCourse" />
+    <FindCourse />
     <CourseList />
   </div>
 </template>
@@ -9,18 +8,15 @@
 <script>
 import CourseList from "@/components/CourseList.vue";
 import FindCourse from "@/components/FindCourse.vue";
-import GETable from "@/components/GETable.vue";
 
 export default {
   name: "Home",
   components: {
     CourseList,
-    FindCourse,
-    GETable
+    FindCourse
   },
   data() {
     return {
-      findCourse: true
     };
   }
 };

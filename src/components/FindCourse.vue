@@ -1,6 +1,5 @@
 <template>
   <div class="find-course">
-    <div class="toggle" @click="$emit('toggle')">GE Table</div>
     <h1>Find Courses</h1>
     <Selector />
     <CourseInfo />

@@ -2,15 +2,7 @@
   <div class="selector">
     <div class="loading" v-if="loading">Loading ...</div>
     <div class="row">
-      <template v-if="!GETable">
-        <strong>Find Course by</strong>
-        <el-select style="width: 150px;" filterable @change="change('by')" v-model="by">
-          <el-option value="Search" label="Search" />
-          <el-option value="Department" label="Department" />
-          <el-option value="GE" label="GE" />
-        </el-select>
-      </template>
-      <template v-if="by">
+      <template>
         <strong>Quarter:</strong>
         <el-select filterable @change="change('quarter')" v-model="query.quarter">
           <el-option
@@ -19,6 +11,14 @@
             :label="o.name"
             v-bind:key="o.key"
           />
+        </el-select>
+      </template>
+      <template>
+        <strong>Find Course by</strong>
+        <el-select style="width: 150px;" filterable @change="change('by')" v-model="by">
+          <el-option value="Search" label="Search" />
+          <el-option value="Department" label="Department" />
+          <el-option value="GE" label="GE" />
         </el-select>
       </template>
     </div>
@@ -97,7 +97,6 @@ var season = ["", "Winter", "Spring", "Summer", "Fall"];
 
 export default {
   name: "Selector",
-  props: ["GETable"],
   data() {
     return {
       loading: false,
@@ -120,21 +119,25 @@ export default {
     };
   },
   mounted() {
-    if (this.GETable) this.by = "GE";
-    else this.by = "Search";
+    this.by = "Search";
     this.change("by");
+    this.getList("quarter");
+  },
+  computed: {
+    ...mapState(["quarter"])
   },
   methods: {
     ...mapMutations(["setCourse", "setQuarter"]),
+
     change: function(key) {
       this.setCourse(null); // clear current course
       if (key == "by") {
-        this.query.quarter = "";
-        this.options.quarter = [];
         this.options.department = [];
         this.options.course = [];
-        this.getList("quarter");
+        if (this.by == "GE") this.getList("college");
+        if (this.by == "Department") this.getList("department");
       }
+
       if (key == "quarter") {
         this.query.department = "";
         this.query.college = "";
@@ -146,31 +149,26 @@ export default {
         if (this.by == "GE") this.getList("college");
         if (this.by == "Department") this.getList("department");
       }
+
       if (key == "department") {
         this.query.course = "";
         this.options.course = [];
         this.getList("course");
       }
+
       if (key == "college") {
         this.query.GE = "";
         this.options.GE = [];
         this.options.course = [];
         this.getList("GE");
       }
+
       if (key == "GE") {
         this.query.course = "";
         this.options.course = [];
-        if (this.GETable) {
-          this.$emit(
-            "select",
-            this.query.quarter,
-            this.query.college,
-            this.query.GE
-          );
-          return;
-        }
         if (this.query.GE.length) this.getList("course");
       }
+
       if (key == "course") {
         this.loading = true;
         axios // get course info
@@ -191,6 +189,7 @@ export default {
           });
       }
     },
+
     getList: function(key) {
       this.loading = true;
       if (key == "quarter") {
@@ -202,6 +201,7 @@ export default {
               let year = Math.floor(q / 10);
               let s = season[q % 10];
               this.options.quarter.push({ name: year + s, key: q });
+              if (this.quarter === q) resp.data.default = q;
             });
             this.query.quarter = resp.data.default;
             setTimeout(this.change("quarter"), 10);
