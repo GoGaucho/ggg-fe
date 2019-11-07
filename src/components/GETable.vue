@@ -1,23 +1,17 @@
 <template>
-  <el-table
-    :data="courseList.list"
-    v-if="courseList.list.length"
-    style="width: 100%;"
-    @click="loadCourse(scope.row.name)"
-  >
+  <el-table :data="data.list" v-if="data.list.length" style="width: 100%;">
+    <el-table-column type="expand">
+      <template slot-scope="scope">
+        <CourseInfo v-bind:detail="scope.row.detail" />
+      </template>
+    </el-table-column>
     <el-table-column fixed prop="name" label="Course" align="center" />
     <el-table-column fixed label="ADD" width="80" align="center">
-      <template slot-scope="scope">
+      <template slot-scope="scope" v-if="scope.row.name">
         <el-button size="mini" @click="addSelected(scope.row.name)">ADD</el-button>
       </template>
     </el-table-column>
-    <el-table-column
-      v-for="ge in courseList.ge"
-      :prop="ge"
-      :label="ge"
-      align="center"
-      v-bind:key="ge"
-    />
+    <el-table-column v-for="ge in data.ge" :prop="ge" :label="ge" align="center" v-bind:key="ge" />
   </el-table>
 </template>
 
@@ -28,34 +22,24 @@ import CourseInfo from "@/components/CourseInfo.vue";
 
 export default {
   name: "GETable",
-  data() {
-    return {};
+  components: {
+    CourseInfo
   },
   computed: {
-    ...mapState(["courseList"])
+    ...mapState(["courseList", "quarter"]),
+    data: function() {
+      const ans = {
+        list: this.courseList.list,
+        ge: this.courseList.ge
+      };
+      this.courseList.list.forEach(
+        e => (e.detail = { quarter: this.quarter, name: e.name })
+      );
+      return ans;
+    }
   },
   methods: {
-    ...mapMutations(["addSelected", "setCourse"]),
-
-    loadCourse(c) {
-      this.loading = true;
-      axios // get course info
-        .get("/api/sche/getClassByID", {
-          params: {
-            q: this.quarter,
-            id: c
-          }
-        })
-        .then(resp => {
-          this.loading = false;
-          this.setCourse(resp.data);
-          this.$emit("select");
-        })
-        .catch(error => {
-          this.loading = false;
-          swal("ERROR", "Network Error", "error");
-        });
-    }
+    ...mapMutations(["addSelected", "setCourse"])
   }
 };
 </script>

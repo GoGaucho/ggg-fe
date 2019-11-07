@@ -1,27 +1,30 @@
 <template>
-  <div class="course-info">
-    <div v-if="course">
-      <h2>
-        {{course.courseId}} : {{course.title}} &nbsp;
-        <span
-          @click="addSelected(course.courseId)"
-          class="add"
-        >ADD to List</span>
-      </h2>
-      <p>{{course.description}}</p>
-      <div class="note">
-        <strong>Grading :</strong>
-        {{gradingOption}}
+  <div>
+    <div class="loading" v-if="loading">Loading ...</div>
+    <div class="course-info">
+      <div v-if="course">
+        <h2>
+          {{course.courseId}} : {{course.title}} &nbsp;
+          <span
+            @click="addSelected(course.courseId)"
+            class="add"
+          >ADD to List</span>
+        </h2>
+        <p>{{course.description}}</p>
+        <div class="note">
+          <strong>Grading :</strong>
+          {{gradingOption}}
+        </div>
+        <div class="note">
+          <strong>Unit :</strong>
+          {{units}}
+        </div>
+        <div class="note">
+          <strong>GE :</strong>
+          {{GEs}}
+        </div>
+        <TimeTable v-if="res" v-bind:res="res" />
       </div>
-      <div class="note">
-        <strong>Unit :</strong>
-        {{units}}
-      </div>
-      <div class="note">
-        <strong>GE :</strong>
-        {{GEs}}
-      </div>
-      <TimeTable />
     </div>
   </div>
 </template>
@@ -35,38 +38,127 @@ export default {
   components: {
     TimeTable
   },
-  computed: {
-    ...mapState(["course"]),
-    gradingOption: function() {
-      if (!this.course.gradingOption) return "Optional";
-      if (this.course.gradingOption == "L") return "Letter";
-      if (this.course.gradingOption == "P") return "Pass / No Pass";
-    },
-    units: function() {
-      if (this.course.unitsFixed) return this.course.unitsFixed;
-      else
-        return (
-          this.course.unitsVariableLow + " - " + this.course.unitsVariableHigh
-        );
-    },
-    GEs: function() {
-      if (!this.course.generalEducation.length) return "No";
-      let res = "";
-      for (let i in this.course.generalEducation) {
-        let ge = this.course.generalEducation[i];
-        if (i != 0) res += ",    ";
-        res += (ge.geCode + "(" + ge.geCollege + ")").replace(/\s/g, "");
-      }
-      return res;
-    }
+  props: ["detail"],
+  data() {
+    return {
+      loading: false,
+      res: [],
+      course: null,
+      gradingOption: "",
+      units: "",
+      GEs: ""
+    };
+  },
+  mounted() {
+    this.loadCourse(this.detail.name);
   },
   methods: {
-    ...mapMutations(["addSelected"])
+    ...mapMutations(["addSelected"]),
+
+    loadCourse(c) {
+      this.loading = true;
+      axios // get course info
+        .get("/api/sche/getClassByID", {
+          params: {
+            q: this.detail.quarter,
+            id: c
+          }
+        })
+        .then(resp => {
+          this.course = resp.data;
+          this.getData();
+          this.loading = false;
+        })
+        .catch(error => {
+          this.loading = false;
+          swal("ERROR", "Network Error", "error");
+        });
+    },
+
+    getData() {
+      const c = this.course;
+      let res = [];
+      for (let i in c.classSections) {
+        let s = c.classSections[i];
+        let ss = {};
+        ss.enrollCode = s.enrollCode;
+        ss.disabled = s.courseCancelled || s.classClosed;
+        ss.max = s.maxEnroll;
+        ss.space = s.maxEnroll - s.enrolledTotal;
+
+        for (let i in s.instructors) {
+          if (i == 0) ss.instructor = "";
+          else ss.instructor += "\n";
+          ss.instructor += s.instructors[i].instructor;
+        }
+
+        if (!s.timeLocations[0]) {
+          // process time/location
+          ss.days = "T.B.A.";
+          ss.time = "T.B.A.";
+          ss.location = "T.B.A.";
+        } else {
+          for (let j in s.timeLocations) {
+            let tl = s.timeLocations[j];
+            if (j == 0) {
+              ss.days = "";
+              ss.time = "";
+              ss.location = "";
+            } else {
+              ss.days += "\n";
+              ss.time += "\n";
+              ss.location += "\n";
+            }
+            ss.days += tl.days;
+            ss.time += tl.beginTime + " - " + tl.endTime;
+            ss.location += tl.building + " " + tl.room;
+          }
+          ss.days = ss.days.replace(/null/g, "T.B.A.");
+          ss.time = ss.time.replace(/null/g, "T.B.A.");
+          ss.location = ss.location.replace(/null/g, "T.B.A.");
+        }
+
+        if (s.section % 100 == 0) {
+          // process lecture/section
+          ss.children = [];
+          ss.status = "lecture";
+          res.push(ss);
+        } else {
+          ss.status = "section";
+          res[res.length - 1].children.push(ss);
+        }
+      }
+      this.res = res;
+
+      this.gradingOption = (a =>
+        !a ? "Optional" : a == "L" ? "Letter" : "Pass / No Pass")(
+        c.gradingOption
+      );
+      this.units = ((a, b, c) => (a ? a : `${b} - ${c}`))(
+        c.unitsFixed,
+        c.unitsVariableLow,
+        c.unitsVariableHigh
+      );
+      this.GEs = (ge =>
+        !ge.length
+          ? "No"
+          : ge
+              .map(e => `${e.geCode}(${e.geCollege})`.replace(/\s/g, ""))
+              .join(",    "))(c.generalEducation);
+    }
   }
 };
 </script>
 
 <style scoped>
+div.loading {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  color: #036;
+  font-size: 1.2rem;
+}
+
 div.course-info {
   width: 90%;
   margin: 20px 10px;
