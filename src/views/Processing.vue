@@ -116,15 +116,26 @@ export default {
   methods: {
     getGrids(c) {
       const arr = [];
+      var cont = false;
       for (var r = 1; r <= 100; r++)
-        if (this.timegrid[c * 1440 - 960 + Math.floor(7.8 * r)]) arr.push(r);
+        if (this.timegrid[c * 1440 - 960 + Math.floor(7.8 * r)]) {
+          if (!cont) {
+            arr.push(r);
+            cont = true;
+          }
+        } else cont = false;
+
       return arr;
     },
     blockStyle(r, c) {
+      let x = r;
+      while (this.timegrid[c * 1440 - 960 + Math.floor(7.8 * x)]) x++;
+
       let res = "";
       res += "top: " + (r - 1) + "%;";
       res += "left: " + 20 * (c - 1) + "%;";
       res += "background-color: " + this.color + ";";
+      res += "height: " + (x - r) + "%";
       return res;
     },
     ...mapMutations(["addResults", "clearResults"]),
@@ -247,16 +258,12 @@ export default {
     },
     dfs: async function(I) {
       if (!this.calculating) return;
-      if (Math.random() > 0.8) {
-        await sleep(50);
-        await this.$forceUpdate();
-      }
       if (this.results.length > 999) return; // prevent over calculate
       if (!this.raw.courses[I]) {
         // success for one solution
         this.numSolution++;
         this.addResults(this.chosen);
-        await sleep(50); // sleep time FLAG
+        await sleep(10); // sleep time FLAG
         return;
       }
       for (let choice of this.raw.courses[I]) {
@@ -361,7 +368,6 @@ div.grid {
 div.block {
   position: absolute;
   width: 20%;
-  height: 1%;
 }
 
 div.content {
