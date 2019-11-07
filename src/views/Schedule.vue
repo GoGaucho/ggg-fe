@@ -1,15 +1,20 @@
 <template>
   <div class="schedule">
-    <h1>
-      <el-select filterable @change="choose" v-model="I">
-        <el-option v-for="o in options" :value="o.key" :label="o.label" />
-      </el-select>
-      Weekly View 
-      <el-button
-        style="margin-left: 10px;"
-        @click="$router.push({name: 'planner'})"
-      >Back</el-button>
-    </h1>
+    <div class="header">
+      <div class="row">
+        <h1>Weekly View</h1>
+        <el-button @click="$router.push({name: 'planner'})">Back</el-button>  
+      </div>
+      <div class="row">
+        <el-button-group style="margin-right: 10px;">
+          <el-button @click="choose(Number(I)-1)" size="small" icon="el-icon-arrow-left"></el-button>
+          <el-button @click="choose(Number(I)+1)" size="small" icon="el-icon-arrow-right"></el-button>
+        </el-button-group>
+        <el-select filterable @change="choose" v-model="I">
+          <el-option v-for="o in options" :value="o.key" :label="o.label" />
+        </el-select>  
+      </div>
+    </div>
     <div class="table">
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card">{{days[d]}}</div>
       <template v-for="c in result">
@@ -33,7 +38,7 @@ export default {
   name: 'Schedule',
   data() {
     return {
-      I: '',
+      I: '0',
       options: [],
       result: [],
       dayNums: [1, 2, 3, 4, 5],
@@ -46,7 +51,6 @@ export default {
     for (let i in this.results) {
       this.options.push({label: 'Result ' + (Number(i) + 1), key: i});
     }
-    this.I = this.options[0].label;
     this.choose(0);
     setTimeout(this.addColor, 1000);
   },
@@ -55,6 +59,8 @@ export default {
   },
   methods: {
     choose: function(I) {
+      if (!this.results[I]) return;
+      this.I = String(I);
       this.result = this.results[I];
       this.$forceUpdate();
     },
@@ -75,7 +81,7 @@ export default {
     },
     cardStyle: function(title, range) {
       let res = "";
-      let day = Math.floor(range[0] / 1440);
+      let day = Math.floor(range[0] / 1440) + 1;
       let begin = range[0] % 1440;
       let end = range[1] % 1440;
       res += "height: " + 0.119 * (end - begin) + "%;";
@@ -121,11 +127,24 @@ div.schedule {
   flex-direction: column;
   align-items: center;
 }
+div.header {
+  width: 90%;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80px;
+}
+div.row {
+  display: flex;
+  height: 100%;
+  align-items: center;
+}
 div.table {
   position: relative;
   margin: 15px auto 0;
   width: 90%;
-  height: calc(100vh - 165px);
+  height: calc(100vh - 160px);
 }
 div.card {
   position: absolute;
@@ -150,5 +169,6 @@ strong {
 
 h1, h3, h5 {
   color: #036;
+  margin: 0 10px;
 }
 </style>

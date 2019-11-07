@@ -5,6 +5,7 @@
       <template v-if="!GETable">
         <strong>Find Course by </strong>
         <el-select style="width: 150px;" filterable @change="change('by')" v-model="by">
+          <el-option value="Search" label="Search" />
           <el-option value="Department" label="Department" />
           <el-option value="GE" label="GE" />
         </el-select>
@@ -15,6 +16,12 @@
           <el-option v-for="o in options.quarter" :value="o.key" :label="o.name" />
         </el-select>
       </template>
+    </div>
+
+    <div v-if="by == 'Search' && options.quarter.length" class="row">
+      <strong>General Search:</strong>
+      <el-input style="width: 50%; margin-right: 10px;" v-model="query.search"></el-input>
+      <el-button type="primary" @click="getList('course')">Search</el-button>
     </div>
     
     <div v-if="by == 'Department'" class="row">
@@ -66,6 +73,7 @@ export default {
       by: '',
       query: {
         quarter: '',
+        search: '',
         department: '',
         course: '',
         college: '',
@@ -82,7 +90,7 @@ export default {
   },
   mounted() {
     if (this.GETable) this.by = "GE";
-    else this.by = "Department";
+    else this.by = "Search";
     this.change("by");
   },
   methods: {
@@ -91,6 +99,7 @@ export default {
       this.setCourse(null); // clear current course
       if (key == "by") {
         this.query.quarter = '';
+        this.options.quarter = [];
         this.options.department = [];
         this.options.course = [];
         this.getList('quarter');
@@ -104,7 +113,7 @@ export default {
         this.options.GE = [];
         this.setQuarter(this.query.quarter);
         if (this.by == "GE") this.getList('college');
-        else this.getList('department');
+        if (this.by == "Department") this.getList('department');
       }
       if (key == "department") {
         this.query.course = '';
@@ -165,6 +174,27 @@ export default {
             swal("ERROR", "Network Error", "error");
           })
       }
+      if (key == 'course' && this.by == "Search") {
+        axios // get course list
+          .get("/api/sche/searchClass", {params: {
+              q: this.query.quarter,
+              key: this.query.search,
+            }})
+          .then((resp) => {
+            this.options.course = [];
+            for (let c of resp.data) {
+              this.options.course.push({ name: c, key: c });
+            }
+            if (!resp.data.length) {
+              swal("No Course Found!", "There is nothing found related to " + this.query.search, "error");
+            }
+            this.loading = false;
+          })
+          .catch((error) => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          })
+      }
       if (key == 'department') {
         axios // get department list
           .get("/api/sche/getDeptList?q=" + this.query.quarter)
@@ -183,7 +213,7 @@ export default {
       }
       if (key == 'course' && this.by == "Department") {
         let deptCode = this.query.department.replace(" ", "_");
-        axios // get department list
+        axios // get course list
           .get("/api/sche/getClassByDept", {params: {
               q: this.query.quarter,
               dept: deptCode,

@@ -1,16 +1,31 @@
 <template>
   <div class="processing">
-    <h1>Processing</h1>
-    <p>{{tip}}</p>
-    <el-button v-if="ready"
-      type="primary"
-      @click="$router.push({name: 'schedule'})"
-    >View Schedule!</el-button>
-    <el-button 
-      type="danger"
-      @click="$router.push({name: 'planner'})"
-      style="margin: 10px;"
-    >Cancel</el-button>
+    <div class="grid">
+      <template v-for="c of 5">
+        <div v-for="r of 100" v-if="timegrid[c*1440-960+Math.floor(7.8*r)]" class="block" :style="blockStyle(r, c)">&nbsp;</div>
+      </template>
+    </div>
+    <div class="content">
+      <h1>Processing</h1>
+      <p>{{tip}}</p>
+      <template v-if="calculating">
+        <p style="margin: 0;">{{numSolution}} solutions found</p>
+        <el-button v-if="numSolution"
+          type="warning"
+          @click="calculating = false"
+          style="margin: 10px;"
+        >That's Enough, Stop!</el-button>
+      </template>
+      <el-button v-if="ready"
+        type="primary"
+        @click="$router.push({name: 'schedule'})"
+      >View Schedule!</el-button>
+      <el-button 
+        type="danger"
+        @click="$router.push({name: 'planner'})"
+        style="margin: 10px;"
+      >Cancel</el-button>  
+    </div>
   </div>
 </template>
 
@@ -19,14 +34,18 @@ import { mapState, mapMutations } from 'vuex'
 
 var courseDetails = [];
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 function daytime2num(day, timeString) {
-  let dayNum = 0;
+  let dayNum = 1;
   if (day == 'M') dayNum = 1;
   if (day == 'T') dayNum = 2;
   if (day == 'W') dayNum = 3;
   if (day == 'R') dayNum = 4;
   if (day == 'F') dayNum = 5;
-  return dayNum * 1440 + Number(timeString.substr(0, 2) * 60) + Number(timeString.substr(3, 2));
+  return (dayNum - 1) * 1440 + Number(timeString.substr(0, 2) * 60) + Number(timeString.substr(3, 2));
 }
 
 function getCoursePeriods(lec, sec) {
@@ -62,10 +81,13 @@ export default {
   data() {
     return {
       ready: false,
-      gotSolution: false,
+      calculating: false,
+      numSolution: 0,
       raw: null,
       chosen: [],
       timegrid: [],
+      colors: ["#fff1f0", "#f9f0ff", "#e6f7ff", "#fffbe6", "#f6ffed", "#fff7e6", "#fff0f6"],
+      color: '',
       tip: '',
     }
   },
@@ -74,8 +96,16 @@ export default {
   },
   mounted() {
     this.process();
+    this.color = this.colors[Math.floor(Math.random()*7)];
   },
   methods: {
+    blockStyle(r, c) {
+      let res = "";
+      res += "top: " + (r-1) + "%;";
+      res += "left: " + 20*(c-1) + "%;";
+      res += "background-color: " + this.color + ";";
+      return res;
+    },
     ...mapMutations(['addResults', 'clearResults']),
     process: async function() {
       this.tip = "Gathering Course Informations ...";
@@ -84,8 +114,10 @@ export default {
       await this.getPeriods();
       this.tip = "Solving The Ultimate Problem of the Universe ...";
       this.initialize();
-      this.dfs(0);
-      if (this.gotSolution) {
+      this.calculating = true;
+      await this.dfs(0);
+      this.calculating = false;
+      if (this.numSolution) {
         this.tip = "Your Schedule is ready!";
         this.ready = true;
       } else {
@@ -180,16 +212,22 @@ export default {
     initialize: function() {
       this.chosen = [];
       this.clearResults();
-      this.gotSolution = false;
+      this.numSolution = 0;
       for (let i = 0; i <= 7201; i++) {
         this.timegrid[i] = false;
       }
     },
-    dfs: function(I) {
-      if (this.results.length > 20) return; // prevent over calculate
+    dfs: async function(I) {
+      if (!this.calculating) return;
+      if (Math.random() > 0.8) {
+        await sleep(50);
+        await this.$forceUpdate();
+      }
+      if (this.results.length > 999) return; // prevent over calculate
       if (!this.raw.courses[I]) { // success for one solution
-        this.gotSolution = true;
+        this.numSolution++;
         this.addResults(this.chosen);
+        await sleep(200);
         return;
       }
       for (let choice of this.raw.courses[I]) {
@@ -200,7 +238,7 @@ export default {
           continue;
         }
         this.chosen.push(choice);
-        this.dfs(I + 1);
+        await this.dfs(I + 1);
         this.erase(choice.periods);
         this.chosen.splice(I, 1);
       }
@@ -272,13 +310,39 @@ export default {
 div.processing {
   width: 100%;
   height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #eee;
+}
 
+div.grid {
+  opacity: 0.8;
+  width: 100%;
+  height: calc(100vh - 60px);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+div.block {
+  position: absolute;
+  width: 20%;
+  height: 1%;
+}
+
+div.content {
+  position: relative;
+  z-index: 100;
+  width: 50%;
+  height: 50%;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 15px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-
-  background-color: #eee;
 }
 
 h1 {
