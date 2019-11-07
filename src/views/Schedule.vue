@@ -3,7 +3,7 @@
     <div class="header">
       <div class="row">
         <h1>Weekly View</h1>
-        <el-button @click="$router.push({name: 'planner'})">Back</el-button>  
+        <el-button @click="$router.push({name: 'planner'})">Back</el-button>
       </div>
       <div class="row">
         <el-button-group style="margin-right: 10px;">
@@ -11,19 +11,24 @@
           <el-button @click="choose(Number(I)+1)" size="small" icon="el-icon-arrow-right"></el-button>
         </el-button-group>
         <el-select filterable @change="choose" v-model="I">
-          <el-option v-for="o in options" :value="o.key" :label="o.label" />
-        </el-select>  
+          <el-option v-for="o in options" :value="o.key" :label="o.label" v-bind:key="o.key" />
+        </el-select>
       </div>
     </div>
     <div class="table">
-      <div v-for="d in dayNums" :style="headerStyle(d)" class="card">{{days[d]}}</div>
+      <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
       <template v-for="c in result">
-        <div v-for="p in c.periods" 
+        <div
+          v-for="p in c.periods"
+          v-bind:key="p.range[0]"
           class="card"
           :style="cardStyle(c.title, p.range)"
-          @click="viewInfo(c)">
-          {{c.title}} <br>
-          {{range2time(p.range)}} <br>
+          @click="viewInfo(c)"
+        >
+          {{c.title}}
+          <br />
+          {{range2time(p.range)}}
+          <br />
           {{c.location}}
         </div>
       </template>
@@ -32,30 +37,38 @@
 </template>
 
 <script>
-import { mapState } from 'vuex'
+import { mapState } from "vuex";
 
 export default {
-  name: 'Schedule',
+  name: "Schedule",
   data() {
     return {
-      I: '0',
+      I: "0",
       options: [],
       result: [],
       dayNums: [1, 2, 3, 4, 5],
-      days: ['', 'Mon', 'Tue', 'Wed', 'Thr', 'Fri'],
-      colors: ["#fff1f0", "#f9f0ff", "#e6f7ff", "#fffbe6", "#f6ffed", "#fff7e6", "#fff0f6"],
-      colorMap: [],
-    }
+      days: ["", "Mon", "Tue", "Wed", "Thr", "Fri"],
+      colors: [
+        "#fff1f0",
+        "#f9f0ff",
+        "#e6f7ff",
+        "#fffbe6",
+        "#f6ffed",
+        "#fff7e6",
+        "#fff0f6"
+      ],
+      colorMap: []
+    };
   },
   mounted() {
     for (let i in this.results) {
-      this.options.push({label: 'Result ' + (Number(i) + 1), key: i});
+      this.options.push({ label: "Result " + (Number(i) + 1), key: i });
     }
     this.choose(0);
     setTimeout(this.addColor, 1000);
   },
   computed: {
-    ...mapState(['results']),
+    ...mapState(["results"])
   },
   methods: {
     choose: function(I) {
@@ -95,16 +108,16 @@ export default {
       let timenum = range[0];
       timenum %= 1440;
       let hour = Math.floor(timenum / 60);
-      let min = (timenum % 60);
-      if (hour < 10) hour = '0' + String(hour);
-      if (min < 10) min = '0' + String(min);
+      let min = timenum % 60;
+      if (hour < 10) hour = "0" + String(hour);
+      if (min < 10) min = "0" + String(min);
       res += hour + ":" + min;
       timenum = range[1] % 1440;
       res += " - ";
       hour = Math.floor(timenum / 60);
-      min = (timenum % 60);
-      if (hour < 10) hour = '0' + String(hour);
-      if (min < 10) min = '0' + String(min);
+      min = timenum % 60;
+      if (hour < 10) hour = "0" + String(hour);
+      if (min < 10) min = "0" + String(min);
       res += hour + ":" + min;
       return res;
     },
@@ -114,7 +127,7 @@ export default {
       swal(c.title, info, "success");
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -167,7 +180,9 @@ strong {
   color: #036;
 }
 
-h1, h3, h5 {
+h1,
+h3,
+h5 {
   color: #036;
   margin: 0 10px;
 }

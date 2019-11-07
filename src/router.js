@@ -14,21 +14,21 @@ export default new Router({
     {
       path: '/planner',
       name: 'planner',
-      component: function () { 
+      component: function () {
         return import('./views/Planner.vue')
       }
     },
     {
       path: '/processing',
       name: 'processing',
-      component: function () { 
+      component: function () {
         return import('./views/Processing.vue')
       }
     },
     {
       path: '/schedule',
       name: 'schedule',
-      component: function () { 
+      component: function () {
         return import('./views/Schedule.vue')
       }
     }

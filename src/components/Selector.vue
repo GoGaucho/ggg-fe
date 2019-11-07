@@ -3,7 +3,7 @@
     <div class="loading" v-if="loading">Loading ...</div>
     <div class="row">
       <template v-if="!GETable">
-        <strong>Find Course by </strong>
+        <strong>Find Course by</strong>
         <el-select style="width: 150px;" filterable @change="change('by')" v-model="by">
           <el-option value="Search" label="Search" />
           <el-option value="Department" label="Department" />
@@ -13,7 +13,12 @@
       <template v-if="by">
         <strong>Quarter:</strong>
         <el-select filterable @change="change('quarter')" v-model="query.quarter">
-          <el-option v-for="o in options.quarter" :value="o.key" :label="o.name" />
+          <el-option
+            v-for="o in options.quarter"
+            :value="o.key"
+            :label="o.name"
+            v-bind:key="o.key"
+          />
         </el-select>
       </template>
     </div>
@@ -23,12 +28,22 @@
       <el-input style="width: 50%; margin-right: 10px;" v-model="query.search"></el-input>
       <el-button type="primary" @click="getList('course')">Search</el-button>
     </div>
-    
+
     <div v-if="by == 'Department'" class="row">
       <template v-if="options.department.length">
         <strong>Department:</strong>
-        <el-select style="width: 150px;" filterable @change="change('department')" v-model="query.department">
-          <el-option v-for="o in options.department" :value="o.key" :label="o.name" />
+        <el-select
+          style="width: 150px;"
+          filterable
+          @change="change('department')"
+          v-model="query.department"
+        >
+          <el-option
+            v-for="o in options.department"
+            :value="o.key"
+            :label="o.name"
+            v-bind:key="o.key"
+          />
         </el-select>
       </template>
     </div>
@@ -36,14 +51,30 @@
     <div v-if="by == 'GE'" class="row">
       <template v-if="options.college.length">
         <strong>College:</strong>
-        <el-select style="width: 150px;" filterable @change="change('college')" v-model="query.college">
-          <el-option v-for="o in options.college" :value="o.key" :label="o.name" />
+        <el-select
+          style="width: 150px;"
+          filterable
+          @change="change('college')"
+          v-model="query.college"
+        >
+          <el-option
+            v-for="o in options.college"
+            :value="o.key"
+            :label="o.name"
+            v-bind:key="o.key"
+          />
         </el-select>
       </template>
       <template v-if="options.GE.length">
         <strong>GE:</strong>
-        <el-select style="width: 50%;" multiple filterable @change="change('GE')" v-model="query.GE">
-          <el-option v-for="o in options.GE" :value="o.key" :label="o.name" />
+        <el-select
+          style="width: 50%;"
+          multiple
+          filterable
+          @change="change('GE')"
+          v-model="query.GE"
+        >
+          <el-option v-for="o in options.GE" :value="o.key" :label="o.name" v-bind:key="o.key" />
         </el-select>
       </template>
     </div>
@@ -51,42 +82,42 @@
     <template v-if="options.course.length">
       <strong>Course:</strong>
       <el-select filterable @change="change('course')" v-model="query.course">
-        <el-option v-for="o in options.course" :value="o.key" :label="o.name" />
+        <el-option v-for="o in options.course" :value="o.key" :label="o.name" v-bind:key="o.key" />
       </el-select>
     </template>
   </div>
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapState, mapMutations } from "vuex";
 
 var GEColl = [];
 var GECode = [];
-var season = ['', 'Winter', 'Spring', 'Summer', 'Fall'];
+var season = ["", "Winter", "Spring", "Summer", "Fall"];
 
 export default {
-  name: 'Selector',
-  props: ['GETable'],
+  name: "Selector",
+  props: ["GETable"],
   data() {
     return {
       loading: false,
-      by: '',
+      by: "",
       query: {
-        quarter: '',
-        search: '',
-        department: '',
-        course: '',
-        college: '',
-        GE: [],
+        quarter: "",
+        search: "",
+        department: "",
+        course: "",
+        college: "",
+        GE: []
       },
       options: {
         quarter: [],
         department: [],
         course: [],
         college: [],
-        GE: [],
+        GE: []
       }
-    }
+    };
   },
   mounted() {
     if (this.GETable) this.by = "GE";
@@ -94,111 +125,124 @@ export default {
     this.change("by");
   },
   methods: {
-    ...mapMutations(['setCourse', 'setQuarter']),
+    ...mapMutations(["setCourse", "setQuarter"]),
     change: function(key) {
       this.setCourse(null); // clear current course
       if (key == "by") {
-        this.query.quarter = '';
+        this.query.quarter = "";
         this.options.quarter = [];
         this.options.department = [];
         this.options.course = [];
-        this.getList('quarter');
+        this.getList("quarter");
       }
       if (key == "quarter") {
-        this.query.department = '';
-        this.query.college = '';
+        this.query.department = "";
+        this.query.college = "";
         this.options.department = [];
         this.options.course = [];
         this.options.college = [];
         this.options.GE = [];
         this.setQuarter(this.query.quarter);
-        if (this.by == "GE") this.getList('college');
-        if (this.by == "Department") this.getList('department');
+        if (this.by == "GE") this.getList("college");
+        if (this.by == "Department") this.getList("department");
       }
       if (key == "department") {
-        this.query.course = '';
+        this.query.course = "";
         this.options.course = [];
-        this.getList('course');
+        this.getList("course");
       }
       if (key == "college") {
-        this.query.GE = '';
+        this.query.GE = "";
         this.options.GE = [];
         this.options.course = [];
-        this.getList('GE');
+        this.getList("GE");
       }
       if (key == "GE") {
-        this.query.course = '';
+        this.query.course = "";
         this.options.course = [];
         if (this.GETable) {
-          this.$emit("select", this.query.quarter, this.query.college, this.query.GE);
+          this.$emit(
+            "select",
+            this.query.quarter,
+            this.query.college,
+            this.query.GE
+          );
           return;
         }
-        if (this.query.GE.length) this.getList('course');
+        if (this.query.GE.length) this.getList("course");
       }
       if (key == "course") {
         this.loading = true;
         axios // get course info
-          .get("/api/sche/getClassByID", {params: {
-            q: this.query.quarter,
-            id: this.query.course,
-          }})
-          .then((resp) => {
+          .get("/api/sche/getClassByID", {
+            params: {
+              q: this.query.quarter,
+              id: this.query.course
+            }
+          })
+          .then(resp => {
             this.loading = false;
             this.setCourse(resp.data);
             this.$emit("select");
           })
-          .catch((error) => {
+          .catch(error => {
             this.loading = false;
             swal("ERROR", "Network Error", "error");
-          })
+          });
       }
     },
     getList: function(key) {
       this.loading = true;
-      if (key == 'quarter') {
+      if (key == "quarter") {
         axios
           .get("/api/sche/getQuarter")
-          .then((resp) => {
+          .then(resp => {
             this.options.quarter = [];
             resp.data.qlist.forEach(q => {
               let year = Math.floor(q / 10);
-              let s = season[q%10];
-              this.options.quarter.push({name: year + s, key: q});
-            })
+              let s = season[q % 10];
+              this.options.quarter.push({ name: year + s, key: q });
+            });
             this.query.quarter = resp.data.default;
-            setTimeout(this.change('quarter'), 10);
+            setTimeout(this.change("quarter"), 10);
             this.loading = false;
           })
-          .catch((error) => {
+          .catch(error => {
             this.loading = false;
             swal("ERROR", "Network Error", "error");
-          })
+          });
       }
-      if (key == 'course' && this.by == "Search") {
+      if (key == "course" && this.by == "Search") {
         axios // get course list
-          .get("/api/sche/searchClass", {params: {
+          .get("/api/sche/searchClass", {
+            params: {
               q: this.query.quarter,
-              key: this.query.search,
-            }})
-          .then((resp) => {
+              key: this.query.search
+            }
+          })
+          .then(resp => {
             this.options.course = [];
             for (let c of resp.data) {
               this.options.course.push({ name: c, key: c });
             }
             if (!resp.data.length) {
-              swal("No Course Found!", "There is nothing found related to " + this.query.search, "error");
+              swal(
+                "No Course Found!",
+                "There is nothing found related to " + this.query.search,
+                "error"
+              );
             }
             this.loading = false;
           })
-          .catch((error) => {
+          .catch(error => {
             this.loading = false;
             swal("ERROR", "Network Error", "error");
-          })
+          });
       }
-      if (key == 'department') {
+      if (key == "department") {
         axios // get department list
           .get("/api/sche/getDeptList?q=" + this.query.quarter)
-          .then((resp) => {
+          .then(resp => {
             this.options.department = [];
             for (let d of resp.data) {
               this.options.department.push({ name: d, key: d });
@@ -206,19 +250,21 @@ export default {
             this.options.department.sort();
             this.loading = false;
           })
-          .catch((error) => {
+          .catch(error => {
             this.loading = false;
             swal("ERROR", "Network Error", "error");
-          })
+          });
       }
-      if (key == 'course' && this.by == "Department") {
+      if (key == "course" && this.by == "Department") {
         let deptCode = this.query.department.replace(" ", "_");
         axios // get course list
-          .get("/api/sche/getClassByDept", {params: {
+          .get("/api/sche/getClassByDept", {
+            params: {
               q: this.query.quarter,
-              dept: deptCode,
-            }})
-          .then((resp) => {
+              dept: deptCode
+            }
+          })
+          .then(resp => {
             this.options.course = [];
             for (let c of resp.data) {
               this.options.course.push({ name: c.id, key: c.id });
@@ -226,15 +272,15 @@ export default {
             this.options.course.sort();
             this.loading = false;
           })
-          .catch((error) => {
+          .catch(error => {
             this.loading = false;
             swal("ERROR", "Network Error", "error");
-          })
+          });
       }
-      if (key == 'college') {
+      if (key == "college") {
         axios // get GE list
           .get("/api/sche/getGEList?q=" + this.query.quarter)
-          .then((resp) => {
+          .then(resp => {
             this.options.college = [];
             GEColl = resp.data;
             for (let c of resp.data) {
@@ -242,12 +288,12 @@ export default {
             }
             this.loading = false;
           })
-          .catch((error) => {
+          .catch(error => {
             this.loading = false;
             swal("ERROR", "Network Error", "error");
-          })
+          });
       }
-      if (key == 'GE') {
+      if (key == "GE") {
         this.options.GE = [];
         for (let i in GEColl) {
           if (GEColl[i].col == this.query.college) {
@@ -261,7 +307,7 @@ export default {
         this.options.GE.sort();
         this.loading = false;
       }
-      if (key == 'course' && this.by == "GE") {
+      if (key == "course" && this.by == "GE") {
         this.options.course = [];
         let count = [];
         for (let i in GECode) {
@@ -282,7 +328,7 @@ export default {
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -313,7 +359,8 @@ div.loading {
   font-size: 1.2rem;
 }
 
-h3, strong {
+h3,
+strong {
   margin: 0 10px;
   color: #036;
 }

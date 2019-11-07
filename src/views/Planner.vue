@@ -9,16 +9,18 @@
 </template>
 
 <script>
-import CourseList from "@/components/CourseList.vue"
-import Events from "@/components/Events.vue"
-import TimeLimit from "@/components/TimeLimit.vue"
+import CourseList from "@/components/CourseList.vue";
+import Events from "@/components/Events.vue";
+import TimeLimit from "@/components/TimeLimit.vue";
 
 export default {
-  name: 'Planner',
+  name: "Planner",
   components: {
-    CourseList, Events, TimeLimit
+    CourseList,
+    Events,
+    TimeLimit
   }
-}
+};
 </script>
 
 <style scoped>

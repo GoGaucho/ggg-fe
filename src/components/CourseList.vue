@@ -1,9 +1,9 @@
 <template>
   <div class="course-list">
     <h1>Selected Courses</h1>
-    <hr/>
+    <hr />
     <div v-if="!selected.length" class="remove">Empty</div>
-    <div v-for="c in selected" class="course">
+    <div v-for="c in selected" class="course" v-bind:key="c">
       <strong>{{c}}</strong>
       <div class="remove" @click="removeSelected(c)">remove</div>
     </div>
@@ -12,21 +12,21 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
-import Action from '@/components/Action.vue'
+import { mapState, mapMutations } from "vuex";
+import Action from "@/components/Action.vue";
 
 export default {
-  name: 'CourseList',
+  name: "CourseList",
   components: {
     Action
   },
   computed: {
-    ...mapState(['selected']),
+    ...mapState(["selected"])
   },
   methods: {
-    ...mapMutations(['removeSelected']),
+    ...mapMutations(["removeSelected"])
   }
-}
+};
 </script>
 
 <style scoped>
@@ -60,7 +60,9 @@ div.remove {
   font-size: 1rem;
 }
 
-h1, h3, h5 {
+h1,
+h3,
+h5 {
   color: #036;
 }
 

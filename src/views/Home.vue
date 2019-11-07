@@ -7,21 +7,23 @@
 </template>
 
 <script>
-import CourseList from "@/components/CourseList.vue"
-import FindCourse from "@/components/FindCourse.vue"
-import GETable from "@/components/GETable.vue"
+import CourseList from "@/components/CourseList.vue";
+import FindCourse from "@/components/FindCourse.vue";
+import GETable from "@/components/GETable.vue";
 
 export default {
-  name: 'Home',
+  name: "Home",
   components: {
-    CourseList, FindCourse, GETable
+    CourseList,
+    FindCourse,
+    GETable
   },
   data() {
     return {
-      findCourse: true,
-    }
+      findCourse: true
+    };
   }
-}
+};
 </script>
 
 <style scoped>

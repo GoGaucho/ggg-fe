@@ -4,14 +4,15 @@
     <p>Your time requirement for all weekdays.</p>
     <div class="row">
       <strong>Time Range:</strong>
-      <el-time-picker is-range
+      <el-time-picker
+        is-range
         format="HH:mm"
         v-model="timerange"
         range-separator="To"
         start-placeholder="Earliest Time"
         end-placeholder="Latest Time"
-        @change="change">
-      </el-time-picker>
+        @change="change"
+      ></el-time-picker>
     </div>
     <div class="row">
       <strong>Break Time:</strong>
@@ -22,33 +23,33 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapState, mapMutations } from "vuex";
 
 export default {
   name: "TimeLimit",
   data() {
     return {
       timerange: [],
-      breakTime: '',
-    }
+      breakTime: ""
+    };
   },
   mounted() {
     this.timerange = this.limit.timerange;
     this.breakTime = this.limit.break;
   },
   computed: {
-    ...mapState(['limit']),
+    ...mapState(["limit"])
   },
   methods: {
-    ...mapMutations(['setLimit']),
+    ...mapMutations(["setLimit"]),
     change: function() {
       this.setLimit({
         timerange: this.timerange,
-        break: this.breakTime,
-      })
+        break: this.breakTime
+      });
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -77,7 +78,9 @@ div.row {
   flex-wrap: wrap;
 }
 
-h1, h3, h5 {
+h1,
+h3,
+h5 {
   color: #036;
 }
 

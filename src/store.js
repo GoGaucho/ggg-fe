@@ -16,47 +16,47 @@ export default new Vuex.Store({
     results: [],
   },
   mutations: {
-    setQuarter (state, quarter) {
+    setQuarter(state, quarter) {
       state.quarter = quarter;
     },
-    addSelected (state, course) {
+    addSelected(state, course) {
       for (let i in state.selected) {
         if (state.selected[i] === course) return;
       }
       state.selected.push(course);
     },
-    removeSelected (state, course) {
+    removeSelected(state, course) {
       for (let i in state.selected) {
         if (state.selected[i] === course) {
           state.selected.splice(i, 1);
         }
       }
     },
-    setCourse (state, course) {
+    setCourse(state, course) {
       state.course = course;
     },
-    addEvents (state, event) {
+    addEvents(state, event) {
       for (let i in state.events) {
         if (state.events[i].name === event.name) return;
       }
       state.events.push(event);
     },
-    removeEvents (state, event) {
+    removeEvents(state, event) {
       for (let i in state.events) {
         if (state.events[i].name === event.name) {
           state.events.splice(i, 1);
         }
       }
     },
-    setLimit (state, limit) {
+    setLimit(state, limit) {
       state.limit = limit;
     },
-    addResults (state, result) {
+    addResults(state, result) {
       let copy = [];
       for (let i of result) copy.push(i);
       state.results.push(copy);
     },
-    clearResults (state) {
+    clearResults(state) {
       state.results = [];
     }
   },

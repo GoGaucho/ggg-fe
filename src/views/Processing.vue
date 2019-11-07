@@ -2,7 +2,12 @@
   <div class="processing">
     <div class="grid">
       <template v-for="c of 5">
-        <div v-for="r of 100" v-if="timegrid[c*1440-960+Math.floor(7.8*r)]" class="block" :style="blockStyle(r, c)">&nbsp;</div>
+        <div
+          v-for="r in getGrids(c)"
+          v-bind:key="`${c}-${r}`"
+          class="block"
+          :style="blockStyle(r, c)"
+        >&nbsp;</div>
       </template>
     </div>
     <div class="content">
@@ -10,42 +15,44 @@
       <p>{{tip}}</p>
       <template v-if="calculating">
         <p style="margin: 0;">{{numSolution}} solutions found</p>
-        <el-button v-if="numSolution"
+        <el-button
+          v-if="numSolution"
           type="warning"
           @click="calculating = false"
           style="margin: 10px;"
         >That's Enough, Stop!</el-button>
       </template>
-      <el-button v-if="ready"
+      <el-button
+        v-if="ready"
         type="primary"
         @click="$router.push({name: 'schedule'})"
       >View Schedule!</el-button>
-      <el-button 
-        type="danger"
-        @click="$router.push({name: 'planner'})"
-        style="margin: 10px;"
-      >Cancel</el-button>  
+      <el-button type="danger" @click="$router.push({name: 'planner'})" style="margin: 10px;">Cancel</el-button>
     </div>
   </div>
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapState, mapMutations } from "vuex";
 
 var courseDetails = [];
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function daytime2num(day, timeString) {
   let dayNum = 1;
-  if (day == 'M') dayNum = 1;
-  if (day == 'T') dayNum = 2;
-  if (day == 'W') dayNum = 3;
-  if (day == 'R') dayNum = 4;
-  if (day == 'F') dayNum = 5;
-  return (dayNum - 1) * 1440 + Number(timeString.substr(0, 2) * 60) + Number(timeString.substr(3, 2));
+  if (day == "M") dayNum = 1;
+  if (day == "T") dayNum = 2;
+  if (day == "W") dayNum = 3;
+  if (day == "R") dayNum = 4;
+  if (day == "F") dayNum = 5;
+  return (
+    (dayNum - 1) * 1440 +
+    Number(timeString.substr(0, 2) * 60) +
+    Number(timeString.substr(3, 2))
+  );
 }
 
 function getCoursePeriods(lec, sec) {
@@ -57,8 +64,8 @@ function getCoursePeriods(lec, sec) {
     for (let d of days) {
       let period = {
         location: tl.building + tl.room,
-        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)],
-      }
+        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]
+      };
       periods.push(period);
     }
   }
@@ -68,8 +75,8 @@ function getCoursePeriods(lec, sec) {
     for (let d of days) {
       let period = {
         location: tl.building + tl.room,
-        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)],
-      }
+        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]
+      };
       periods.push(period);
     }
   }
@@ -77,7 +84,7 @@ function getCoursePeriods(lec, sec) {
 }
 
 export default {
-  name: 'Processing',
+  name: "Processing",
   data() {
     return {
       ready: false,
@@ -86,27 +93,41 @@ export default {
       raw: null,
       chosen: [],
       timegrid: [],
-      colors: ["#fff1f0", "#f9f0ff", "#e6f7ff", "#fffbe6", "#f6ffed", "#fff7e6", "#fff0f6"],
-      color: '',
-      tip: '',
-    }
+      colors: [
+        "#fff1f0",
+        "#f9f0ff",
+        "#e6f7ff",
+        "#fffbe6",
+        "#f6ffed",
+        "#fff7e6",
+        "#fff0f6"
+      ],
+      color: "",
+      tip: ""
+    };
   },
   computed: {
-    ...mapState(['quarter', 'selected', 'events', 'limit', 'results']),
+    ...mapState(["quarter", "selected", "events", "limit", "results"])
   },
   mounted() {
     this.process();
-    this.color = this.colors[Math.floor(Math.random()*7)];
+    this.color = this.colors[Math.floor(Math.random() * 7)];
   },
   methods: {
+    getGrids(c) {
+      const arr = [];
+      for (var r = 1; r <= 100; r++)
+        if (this.timegrid[c * 1440 - 960 + Math.floor(7.8 * r)]) arr.push(r);
+      return arr;
+    },
     blockStyle(r, c) {
       let res = "";
-      res += "top: " + (r-1) + "%;";
-      res += "left: " + 20*(c-1) + "%;";
+      res += "top: " + (r - 1) + "%;";
+      res += "left: " + 20 * (c - 1) + "%;";
       res += "background-color: " + this.color + ";";
       return res;
     },
-    ...mapMutations(['addResults', 'clearResults']),
+    ...mapMutations(["addResults", "clearResults"]),
     process: async function() {
       this.tip = "Gathering Course Informations ...";
       await this.getCourseInfo();
@@ -121,25 +142,26 @@ export default {
         this.tip = "Your Schedule is ready!";
         this.ready = true;
       } else {
-        this.tip = "There is no solution to your input, please click Cancel"
+        this.tip = "There is no solution to your input, please click Cancel";
       }
     },
     getCourseInfo: async function() {
       courseDetails = [];
       for (let s of this.selected) {
         await axios // get course info
-          .get("/api/sche/getClassByID", {params: {
-            q: this.quarter,
-            id: s.replace(/\s*/g, ""),
-          }})
-          .then((resp) => {
+          .get("/api/sche/getClassByID", {
+            params: {
+              q: this.quarter,
+              id: s.replace(/\s*/g, "")
+            }
+          })
+          .then(resp => {
             courseDetails.push(resp.data);
           })
-          .catch((error) => {
-            swal("ERROR", "Server Response Error", "error")
-              .then(() => {
-                this.$router.push({name: 'planner'});
-              });
+          .catch(error => {
+            swal("ERROR", "Server Response Error", "error").then(() => {
+              this.$router.push({ name: "planner" });
+            });
           });
       }
     },
@@ -148,8 +170,8 @@ export default {
         courses: [],
         events: [],
         break: this.limit.break,
-        begin: daytime2num('', this.limit.timerange[0].Format('HH:mm')),
-        end: daytime2num('', this.limit.timerange[1].Format('HH:mm')),
+        begin: daytime2num("", this.limit.timerange[0].Format("HH:mm")),
+        end: daytime2num("", this.limit.timerange[1].Format("HH:mm"))
       };
       for (let c of courseDetails) {
         let course = [];
@@ -158,9 +180,9 @@ export default {
         for (let s of c.classSections) {
           // here add skip conditions
           if (s.section % 100 == 0) {
-            sectionMap[Number(s.section)] = {lecture: s, sections: []};
-          } else if (sectionMap[s.section - s.section % 100]) {
-            sectionMap[s.section - s.section % 100].sections.push(s);
+            sectionMap[Number(s.section)] = { lecture: s, sections: [] };
+          } else if (sectionMap[s.section - (s.section % 100)]) {
+            sectionMap[s.section - (s.section % 100)].sections.push(s);
           }
         }
         for (let s of c.classSections) {
@@ -182,29 +204,35 @@ export default {
             if (ss.classClosed || ss.courseCancelled) continue;
             if (ss.enrolledTotal >= ss.maxEnroll) continue;
             course.push({
-              title: title, 
-              space: Math.min(l.lecture.maxEnroll-l.lecture.enrolledTotal, ss.maxEnroll-ss.enrolledTotal),
-              enrollCode: String(l.lecture.enrollCode) + ", " + String(ss.enrollCode),
+              title: title,
+              space: Math.min(
+                l.lecture.maxEnroll - l.lecture.enrolledTotal,
+                ss.maxEnroll - ss.enrolledTotal
+              ),
+              enrollCode:
+                String(l.lecture.enrollCode) + ", " + String(ss.enrollCode),
               periods: getCoursePeriods(l.lecture, ss)
             });
           }
         }
-        course.sort((a, b) => { return b.space - a.space; });
+        course.sort((a, b) => {
+          return b.space - a.space;
+        });
         this.raw.courses.push(course);
       }
-      
+
       for (let e of this.events) {
         let eventPeriod = {
           title: e.name,
           duration: e.duration,
-          periods: [],
-        }
+          periods: []
+        };
         let begin = e.timerange[0].Format("HH:mm");
         let end = e.timerange[1].Format("HH:mm");
         for (let d of e.days) {
           eventPeriod.periods.push({
             range: [daytime2num(d, begin), daytime2num(d, end)]
-          })
+          });
         }
         this.raw.events.push(eventPeriod);
       }
@@ -224,10 +252,11 @@ export default {
         await this.$forceUpdate();
       }
       if (this.results.length > 999) return; // prevent over calculate
-      if (!this.raw.courses[I]) { // success for one solution
+      if (!this.raw.courses[I]) {
+        // success for one solution
         this.numSolution++;
         this.addResults(this.chosen);
-        await sleep(200);
+        await sleep(50); // sleep time FLAG
         return;
       }
       for (let choice of this.raw.courses[I]) {
@@ -278,17 +307,20 @@ export default {
       return true;
     },
     checkLimit: function() {
-      let space = 0
+      let space = 0;
       for (let i = 0; i <= 7200; i++) {
         let daytime = i % 1440;
         // check time range
-        if (this.timegrid[i] && (daytime < this.raw.begin || daytime > this.raw.end)) 
+        if (
+          this.timegrid[i] &&
+          (daytime < this.raw.begin || daytime > this.raw.end)
+        )
           return false;
         if (this.timegrid[i]) {
           if (space > 0 && space < this.raw.break - 1) return false;
           space = 0;
         } else {
-          space ++;
+          space++;
         }
       }
       return true;
@@ -303,7 +335,7 @@ export default {
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>

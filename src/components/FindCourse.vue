@@ -8,16 +8,17 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
-import Selector from "@/components/Selector.vue"
-import CourseInfo from "@/components/CourseInfo.vue"
+import { mapState, mapMutations } from "vuex";
+import Selector from "@/components/Selector.vue";
+import CourseInfo from "@/components/CourseInfo.vue";
 
 export default {
-  name: 'FindCourse',
+  name: "FindCourse",
   components: {
-    Selector, CourseInfo
-  },
-}
+    Selector,
+    CourseInfo
+  }
+};
 </script>
 
 <style scoped>
@@ -47,7 +48,9 @@ div.toggle {
   text-decoration: underline;
 }
 
-h1, h3, h5 {
+h1,
+h3,
+h5 {
   color: #036;
 }
 

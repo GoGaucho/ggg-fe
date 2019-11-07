@@ -4,33 +4,21 @@
     <h1>GE Table</h1>
     <Selector :GETable="true" @select="select" />
     <div>&nbsp;</div>
-    <el-table :data="courseGE"
-      v-if="courseGE.length"
-      style="width: 100%;">
-      <el-table-column fixed
-        prop="course"
-        label="Course"
-        align="center" />
-      <el-table-column fixed
-        label="ADD"
-        width="80"
-        align="center">
+    <el-table :data="courseGE" v-if="courseGE.length" style="width: 100%;">
+      <el-table-column fixed prop="course" label="Course" align="center" />
+      <el-table-column fixed label="ADD" width="80" align="center">
         <template slot-scope="scope">
           <el-button size="mini" @click="addSelected(scope.row.course)">ADD</el-button>
         </template>
       </el-table-column>
-      <el-table-column
-        v-for="ge in GEs"
-        :prop="ge"
-        :label="ge"
-        align="center" />
+      <el-table-column v-for="ge in GEs" :prop="ge" :label="ge" align="center" v-bind:key="ge" />
     </el-table>
   </div>
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
-import Selector from "@/components/Selector.vue"
+import { mapState, mapMutations } from "vuex";
+import Selector from "@/components/Selector.vue";
 
 var GECode = [];
 
@@ -42,17 +30,17 @@ export default {
   data() {
     return {
       courseGE: [],
-      GEs: [],
-    }
+      GEs: []
+    };
   },
   methods: {
-    ...mapMutations(['addSelected']),
+    ...mapMutations(["addSelected"]),
     select: function(quarter, college, GE) {
       this.courseGE = [];
       this.GEs = GE;
       axios // get GE list
         .get("/api/sche/getGEList?q=" + quarter)
-        .then((resp) => {
+        .then(resp => {
           for (let ge of resp.data) {
             if (ge.col == college) {
               GECode = ge.codes;
@@ -61,12 +49,13 @@ export default {
             }
           }
         })
-        .catch((error) => {
+        .catch(error => {
           swal("ERROR", "", "error");
-        })
+        });
     },
     process: async function() {
-      for (let i in GECode) { // add all courses
+      for (let i in GECode) {
+        // add all courses
         if (this.GEs.includes(GECode[i].code)) {
           for (let course of GECode[i].list) {
             this.addCourse(course);
@@ -88,9 +77,9 @@ export default {
           return;
         }
       }
-    },
+    }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -128,7 +117,9 @@ div.row {
   align-items: center;
 }
 
-h1, h3, h5 {
+h1,
+h3,
+h5 {
   color: #036;
 }
 

@@ -1,61 +1,37 @@
 <template>
   <div class="time-table">
-    <el-table :data="data"
+    <el-table
+      :data="data"
       style="width: 100%;"
       row-key="enrollCode"
       :row-class-name="tableRowClassName"
-      default-expand-all>
-      <el-table-column
-        prop="enrollCode"
-        label="EnrollCode"
-        width="100" 
-        align="center" />
-      <el-table-column
-        prop="instructor"
-        label="Instructor"
-        align="center" />
-      <el-table-column
-        prop="days"
-        label="Days"
-        width="70" 
-        align="center" />
-      <el-table-column
-        prop="time"
-        label="Time"
-        width="110" 
-        align="center" />
-      <el-table-column
-        prop="location"
-        label="Location"
-        align="center" />
-      <el-table-column
-        prop="space"
-        label="Space" 
-        width="65" 
-        align="center" />
-      <el-table-column
-        prop="max"
-        label="Max"
-        width="50"
-        align="center" />
+      default-expand-all
+    >
+      <el-table-column prop="enrollCode" label="EnrollCode" width="100" align="center" />
+      <el-table-column prop="instructor" label="Instructor" align="center" />
+      <el-table-column prop="days" label="Days" width="70" align="center" />
+      <el-table-column prop="time" label="Time" width="110" align="center" />
+      <el-table-column prop="location" label="Location" align="center" />
+      <el-table-column prop="space" label="Space" width="65" align="center" />
+      <el-table-column prop="max" label="Max" width="50" align="center" />
     </el-table>
   </div>
 </template>
 
 <script>
-import { mapState } from 'vuex'
+import { mapState } from "vuex";
 
 export default {
-  name: 'TimeTable',
+  name: "TimeTable",
   computed: {
-    ...mapState(['course']),
+    ...mapState(["course"]),
     data: function() {
       let res = [];
       for (let i in this.course.classSections) {
         let s = this.course.classSections[i];
         let ss = {};
         ss.enrollCode = s.enrollCode;
-        ss.disabled = (s.courseCancelled || s.classClosed);
+        ss.disabled = s.courseCancelled || s.classClosed;
         ss.max = s.maxEnroll;
         ss.space = s.maxEnroll - s.enrolledTotal;
 
@@ -65,7 +41,8 @@ export default {
           ss.instructor += s.instructors[i].instructor;
         }
 
-        if (!s.timeLocations[0]) { // process time/location
+        if (!s.timeLocations[0]) {
+          // process time/location
           ss.days = "T.B.A.";
           ss.time = "T.B.A.";
           ss.location = "T.B.A.";
@@ -83,14 +60,15 @@ export default {
             }
             ss.days += tl.days;
             ss.time += tl.beginTime + " - " + tl.endTime;
-            ss.location += tl.building + " " + tl.room;  
+            ss.location += tl.building + " " + tl.room;
           }
           ss.days = ss.days.replace(/null/g, "T.B.A.");
           ss.time = ss.time.replace(/null/g, "T.B.A.");
           ss.location = ss.location.replace(/null/g, "T.B.A.");
         }
 
-        if (s.section % 100 == 0) { // process lecture/section
+        if (s.section % 100 == 0) {
+          // process lecture/section
           ss.children = [];
           ss.status = "lecture";
           res.push(ss);
@@ -100,16 +78,16 @@ export default {
         }
       }
       return res;
-    },
+    }
   },
   methods: {
-    tableRowClassName({row, rowIndex}) {
-      if (row.disabled) return 'disabled-row';
-      if (row.status == "lecture") return 'lecture-row';
-      return '';
-    },
+    tableRowClassName({ row, rowIndex }) {
+      if (row.disabled) return "disabled-row";
+      if (row.status == "lecture") return "lecture-row";
+      return "";
+    }
   }
-}
+};
 </script>
 
 <style scoped>
