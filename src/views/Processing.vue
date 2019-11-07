@@ -92,7 +92,7 @@ export default {
       numSolution: 0,
       raw: null,
       chosen: [],
-      timegrid: [],
+      timegrid: new Uint16Array(451),
       colors: [
         "#fff1f0",
         "#f9f0ff",
@@ -114,11 +114,26 @@ export default {
     this.color = this.colors[Math.floor(Math.random() * 7)];
   },
   methods: {
+    getTime(a) {
+      return this.timegrid[a >> 4] & (1 << (a & 0xf));
+    },
+
+    getTimeAnd(a, b) {
+      for (var i = a; i < b; i++) if (this.getTime(i)) return true;
+      return false;
+    },
+
+    fillTimeBlock(a, b, v) {
+      for (var i = a; i < b; i++)
+        if (v) this.timegrid[i >> 4] |= 1 << (i & 0xf);
+        else this.timegrid[i >> 4] &= 0xffff - (1 << (i & 0xf));
+    },
+
     getGrids(c) {
       const arr = [];
       var cont = false;
       for (var r = 1; r <= 100; r++)
-        if (this.timegrid[c * 1440 - 960 + Math.floor(7.8 * r)]) {
+        if (this.getTime(c * 1440 - 960 + Math.floor(7.8 * r))) {
           if (!cont) {
             arr.push(r);
             cont = true;
@@ -129,7 +144,7 @@ export default {
     },
     blockStyle(r, c) {
       let x = r;
-      while (this.timegrid[c * 1440 - 960 + Math.floor(7.8 * x)]) x++;
+      while (this.getTime(c * 1440 - 960 + Math.floor(7.8 * x))) x++;
 
       let res = "";
       res += "top: " + (r - 1) + "%;";
@@ -252,9 +267,6 @@ export default {
       this.chosen = [];
       this.clearResults();
       this.numSolution = 0;
-      for (let i = 0; i <= 7201; i++) {
-        this.timegrid[i] = false;
-      }
     },
     dfs: async function(I) {
       if (!this.calculating) return;
@@ -284,16 +296,12 @@ export default {
       for (let period of periods) {
         let begin = period.range[0];
         let end = period.range[1];
-        for (let i = begin; i <= end; i++) {
-          if (this.timegrid[i]) return false;
-        }
+        if (this.getTimeAnd(begin, end + 1)) return false;
       }
       for (let period of periods) {
         let begin = period.range[0];
         let end = period.range[1];
-        for (let i = begin; i <= end; i++) {
-          this.timegrid[i] = true;
-        }
+        this.fillTimeBlock(begin, end + 1, true);
       }
       return true;
     },
@@ -302,7 +310,7 @@ export default {
         for (let p of e.periods) {
           let space = 0;
           for (let i = p.range[0]; i <= p.range[1]; i++) {
-            if (!this.timegrid[i]) {
+            if (!this.getTime(i)) {
               space++;
               if (space >= e.duration) break;
             } else space = 0;
@@ -319,11 +327,11 @@ export default {
         let daytime = i % 1440;
         // check time range
         if (
-          this.timegrid[i] &&
+          this.getTime(i) &&
           (daytime < this.raw.begin || daytime > this.raw.end)
         )
           return false;
-        if (this.timegrid[i]) {
+        if (this.getTime(i)) {
           if (space > 0 && space < this.raw.break - 1) return false;
           space = 0;
         } else {
@@ -336,9 +344,7 @@ export default {
       for (let period of periods) {
         let begin = period.range[0];
         let end = period.range[1];
-        for (let i = begin; i <= end; i++) {
-          this.timegrid[i] = false;
-        }
+        this.fillTimeBlock(begin, end + 1, false);
       }
     }
   }
