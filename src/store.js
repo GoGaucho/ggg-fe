@@ -7,7 +7,6 @@ export default new Vuex.Store({
   state: {
     quarter: (() => { const a = localStorage.quarter; return a ? a : ""; })(),
     selected: (() => { const a = localStorage.selected; return a ? JSON.parse(a) : []; })(),
-    course: null,
     events: (() => { const a = localStorage.events; return a ? JSON.parse(a) : []; })(),
     limit: (() => {
       const a = localStorage.limit;
@@ -16,6 +15,9 @@ export default new Vuex.Store({
         break: 10,
       }
     })(),
+
+    courseList: { list: [], ge: [] },
+    course: null,
     results: [],
   },
   mutations: {
@@ -46,6 +48,10 @@ export default new Vuex.Store({
       }
 
       localStorage.selected = JSON.stringify(state.selected);
+    },
+
+    setCourseList(state, list) {
+      state.courseList = { list: list.list, ge: list.ge };
     },
 
     setCourse(state, course) {

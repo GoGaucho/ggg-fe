@@ -1,82 +1,60 @@
 <template>
-  <div class="GE-table">
-    <div class="toggle" @click="$emit('toggle')">Find Course</div>
-    <h1>GE Table</h1>
-    <Selector :GETable="true" @select="select" />
-    <div>&nbsp;</div>
-    <el-table :data="courseGE" v-if="courseGE.length" style="width: 100%;">
-      <el-table-column fixed prop="course" label="Course" align="center" />
-      <el-table-column fixed label="ADD" width="80" align="center">
-        <template slot-scope="scope">
-          <el-button size="mini" @click="addSelected(scope.row.course)">ADD</el-button>
-        </template>
-      </el-table-column>
-      <el-table-column v-for="ge in GEs" :prop="ge" :label="ge" align="center" v-bind:key="ge" />
-    </el-table>
-  </div>
+  <el-table
+    :data="courseList.list"
+    v-if="courseList.list.length"
+    style="width: 100%;"
+    @click="loadCourse(scope.row.name)"
+  >
+    <el-table-column fixed prop="name" label="Course" align="center" />
+    <el-table-column fixed label="ADD" width="80" align="center">
+      <template slot-scope="scope">
+        <el-button size="mini" @click="addSelected(scope.row.name)">ADD</el-button>
+      </template>
+    </el-table-column>
+    <el-table-column
+      v-for="ge in courseList.ge"
+      :prop="ge"
+      :label="ge"
+      align="center"
+      v-bind:key="ge"
+    />
+  </el-table>
 </template>
 
 <script>
 import { mapState, mapMutations } from "vuex";
 import Selector from "@/components/Selector.vue";
-
-var GECode = [];
+import CourseInfo from "@/components/CourseInfo.vue";
 
 export default {
   name: "GETable",
-  components: {
-    Selector
-  },
   data() {
-    return {
-      courseGE: [],
-      GEs: []
-    };
+    return {};
+  },
+  computed: {
+    ...mapState(["courseList"])
   },
   methods: {
-    ...mapMutations(["addSelected"]),
-    select: function(quarter, college, GE) {
-      this.courseGE = [];
-      this.GEs = GE;
-      axios // get GE list
-        .get("/api/sche/getGEList?q=" + quarter)
-        .then(resp => {
-          for (let ge of resp.data) {
-            if (ge.col == college) {
-              GECode = ge.codes;
-              this.process();
-              break;
-            }
+    ...mapMutations(["addSelected", "setCourse"]),
+
+    loadCourse(c) {
+      this.loading = true;
+      axios // get course info
+        .get("/api/sche/getClassByID", {
+          params: {
+            q: this.quarter,
+            id: c
           }
         })
+        .then(resp => {
+          this.loading = false;
+          this.setCourse(resp.data);
+          this.$emit("select");
+        })
         .catch(error => {
-          swal("ERROR", "", "error");
+          this.loading = false;
+          swal("ERROR", "Network Error", "error");
         });
-    },
-    process: async function() {
-      for (let i in GECode) {
-        // add all courses
-        if (this.GEs.includes(GECode[i].code)) {
-          for (let course of GECode[i].list) {
-            this.addCourse(course);
-            this.addGE(course, GECode[i].code);
-          }
-        }
-      }
-    },
-    addCourse: function(newCourse) {
-      for (let i in this.courseGE) {
-        if (this.courseGE[i].course == newCourse) return;
-      }
-      this.courseGE.push({ course: newCourse });
-    },
-    addGE: function(course, GE) {
-      for (let i in this.courseGE) {
-        if (this.courseGE[i].course == course) {
-          this.courseGE[i][GE] = "X";
-          return;
-        }
-      }
     }
   }
 };

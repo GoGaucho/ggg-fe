@@ -78,13 +78,6 @@
         </el-select>
       </template>
     </div>
-
-    <template v-if="options.course.length">
-      <strong>Course:</strong>
-      <el-select filterable @change="change('course')" v-model="query.course">
-        <el-option v-for="o in options.course" :value="o.key" :label="o.name" v-bind:key="o.key" />
-      </el-select>
-    </template>
   </div>
 </template>
 
@@ -105,14 +98,12 @@ export default {
         quarter: "",
         search: "",
         department: "",
-        course: "",
         college: "",
         GE: []
       },
       options: {
         quarter: [],
         department: [],
-        course: [],
         college: [],
         GE: []
       }
@@ -127,67 +118,55 @@ export default {
     ...mapState(["quarter"])
   },
   methods: {
-    ...mapMutations(["setCourse", "setQuarter"]),
+    ...mapMutations(["setCourse", "setQuarter", "setCourseList"]),
 
     change: function(key) {
       this.setCourse(null); // clear current course
       if (key == "by") {
-        this.options.department = [];
-        this.options.course = [];
-        if (this.by == "GE") this.getList("college");
-        if (this.by == "Department") this.getList("department");
-      }
-
-      if (key == "quarter") {
         this.query.department = "";
         this.query.college = "";
         this.options.department = [];
-        this.options.course = [];
         this.options.college = [];
         this.options.GE = [];
+
+        if (this.query.quarter) {
+          if (this.by == "GE") this.getList("college");
+          if (this.by == "Department") this.getList("department");
+        }
+
+        this.setCourseList({ list: [], ge: [] });
+      }
+
+      if (key == "quarter") {
         this.setQuarter(this.query.quarter);
+
+        this.query.department = "";
+        this.query.college = "";
+        this.options.department = [];
+        this.options.college = [];
+        this.options.GE = [];
         if (this.by == "GE") this.getList("college");
         if (this.by == "Department") this.getList("department");
+
+        this.setCourseList({ list: [], ge: [] });
       }
 
       if (key == "department") {
-        this.query.course = "";
-        this.options.course = [];
         this.getList("course");
       }
 
       if (key == "college") {
         this.query.GE = "";
         this.options.GE = [];
-        this.options.course = [];
         this.getList("GE");
+
+        this.setCourseList({ list: [], ge: [] });
       }
 
       if (key == "GE") {
-        this.query.course = "";
-        this.options.course = [];
         if (this.query.GE.length) this.getList("course");
       }
 
-      if (key == "course") {
-        this.loading = true;
-        axios // get course info
-          .get("/api/sche/getClassByID", {
-            params: {
-              q: this.query.quarter,
-              id: this.query.course
-            }
-          })
-          .then(resp => {
-            this.loading = false;
-            this.setCourse(resp.data);
-            this.$emit("select");
-          })
-          .catch(error => {
-            this.loading = false;
-            swal("ERROR", "Network Error", "error");
-          });
-      }
     },
 
     getList: function(key) {
@@ -212,33 +191,6 @@ export default {
             swal("ERROR", "Network Error", "error");
           });
       }
-      if (key == "course" && this.by == "Search") {
-        axios // get course list
-          .get("/api/sche/searchClass", {
-            params: {
-              q: this.query.quarter,
-              key: this.query.search
-            }
-          })
-          .then(resp => {
-            this.options.course = [];
-            for (let c of resp.data) {
-              this.options.course.push({ name: c, key: c });
-            }
-            if (!resp.data.length) {
-              swal(
-                "No Course Found!",
-                "There is nothing found related to " + this.query.search,
-                "error"
-              );
-            }
-            this.loading = false;
-          })
-          .catch(error => {
-            this.loading = false;
-            swal("ERROR", "Network Error", "error");
-          });
-      }
       if (key == "department") {
         axios // get department list
           .get("/api/sche/getDeptList?q=" + this.query.quarter)
@@ -248,28 +200,6 @@ export default {
               this.options.department.push({ name: d, key: d });
             }
             this.options.department.sort();
-            this.loading = false;
-          })
-          .catch(error => {
-            this.loading = false;
-            swal("ERROR", "Network Error", "error");
-          });
-      }
-      if (key == "course" && this.by == "Department") {
-        let deptCode = this.query.department.replace(" ", "_");
-        axios // get course list
-          .get("/api/sche/getClassByDept", {
-            params: {
-              q: this.query.quarter,
-              dept: deptCode
-            }
-          })
-          .then(resp => {
-            this.options.course = [];
-            for (let c of resp.data) {
-              this.options.course.push({ name: c.id, key: c.id });
-            }
-            this.options.course.sort();
             this.loading = false;
           })
           .catch(error => {
@@ -307,23 +237,72 @@ export default {
         this.options.GE.sort();
         this.loading = false;
       }
-      if (key == "course" && this.by == "GE") {
-        this.options.course = [];
-        let count = [];
-        for (let i in GECode) {
-          if (this.query.GE.includes(GECode[i].code)) {
-            for (let course of GECode[i].list) {
-              if (count[course]) count[course]++;
-              else count[course] = 1;
+      if (key == "course" && this.by == "Search") {
+        axios // get course list
+          .get("/api/sche/searchClass", {
+            params: {
+              q: this.query.quarter,
+              key: this.query.search
             }
-          }
-        }
-        for (let i in count) {
-          if (count[i] == this.query.GE.length) {
-            this.options.course.push({ name: i, key: i });
-          }
-        }
-        this.options.course.sort();
+          })
+          .then(resp => {
+            const list = [];
+            for (let c of resp.data) list.push({ name: c, key: c });
+            this.setCourseList({ list: list, ge: [] });
+            if (!resp.data.length) {
+              swal(
+                "No Course Found!",
+                "There is nothing found related to " + this.query.search,
+                "error"
+              );
+            }
+            this.loading = false;
+          })
+          .catch(error => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          });
+      }
+      if (key == "course" && this.by == "Department") {
+        let deptCode = this.query.department.replace(" ", "_");
+        axios // get course list
+          .get("/api/sche/getClassByDept", {
+            params: {
+              q: this.query.quarter,
+              dept: deptCode
+            }
+          })
+          .then(resp => {
+            const list = [];
+            for (let c of resp.data) list.push({ name: c.id, key: c.id });
+            list.sort();
+            this.setCourseList({ list: list, ge: [] });
+            this.loading = false;
+          })
+          .catch(error => {
+            this.loading = false;
+            swal("ERROR", "Network Error", "error");
+          });
+      }
+      if (key == "course" && this.by == "GE") {
+        let list = {};
+        let clist = [];
+        GECode.forEach(code => {
+          if (this.query.GE.indexOf(code.code) >= 0)
+            code.list.forEach(c => {
+              if (!list[c]) {
+                list[c] = { name: c, key: c, sum: 0 };
+                clist.push(c);
+              }
+              list[c][code.code] = "X";
+              list[c].sum++;
+            });
+        });
+        let xlist = clist.map(e => list[e]);
+        xlist.sort((a, b) => b.sum - a.sum);
+
+        this.setCourseList({ list: xlist, ge: this.query.GE });
+
         this.loading = false;
       }
     }

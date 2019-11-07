@@ -2,6 +2,7 @@
   <div class="find-course">
     <h1>Find Courses</h1>
     <Selector />
+    <GETable />
     <CourseInfo />
   </div>
 </template>
@@ -10,11 +11,13 @@
 import { mapState, mapMutations } from "vuex";
 import Selector from "@/components/Selector.vue";
 import CourseInfo from "@/components/CourseInfo.vue";
+import GETable from "@/components/GETable.vue"
 
 export default {
   name: "FindCourse",
   components: {
     Selector,
+    GETable,
     CourseInfo
   }
 };
