@@ -3,7 +3,10 @@
     <div v-if="course">
       <h2>
         {{course.courseId}} : {{course.title}} &nbsp;
-        <span @click="addSelected(course.courseId)" class="add">ADD to List</span>
+        <span
+          @click="addSelected(course.courseId)"
+          class="add"
+        >ADD to List</span>
       </h2>
       <p>{{course.description}}</p>
       <div class="note">

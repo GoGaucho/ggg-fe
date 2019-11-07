@@ -166,7 +166,6 @@ export default {
       if (key == "GE") {
         if (this.query.GE.length) this.getList("course");
       }
-
     },
 
     getList: function(key) {

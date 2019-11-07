@@ -11,7 +11,7 @@
 import { mapState, mapMutations } from "vuex";
 import Selector from "@/components/Selector.vue";
 import CourseInfo from "@/components/CourseInfo.vue";
-import GETable from "@/components/GETable.vue"
+import GETable from "@/components/GETable.vue";
 
 export default {
   name: "FindCourse",
