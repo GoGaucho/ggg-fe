@@ -35,9 +35,19 @@
 <script>
 import { mapState, mapMutations } from "vuex";
 
+const maxSolution = 999;
+const sleepTime = 100;
+const percentage = 0.8;
+const renderDelay = 20;
+const sleepDecay = 0.95;
+const sleepMin = 0.05;
+var sleepFactor = 1;
 var courseDetails = [];
 
 function sleep(ms) {
+  const time = Math.round(ms * sleepFactor);
+  sleepFactor *= sleepDecay;
+  if (sleepFactor < sleepMin) sleepFactor = sleepMin;
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -270,16 +280,16 @@ export default {
     },
     dfs: async function(I) {
       if (!this.calculating) return;
-      if (this.results.length > 999) return; // prevent over calculate
-      if (Math.random() > 0.8) {
-        await sleep(20);
+      if (this.results.length > maxSolution) return; // prevent over calculate
+      if (Math.random() > percentage) {
+        await sleep(renderDelay);
         await this.$forceUpdate();
       }
       if (!this.raw.courses[I]) {
         // success for one solution
         this.numSolution++;
         this.addResults(this.chosen);
-        await sleep(100); // sleep time FLAG
+        await sleep(sleepTime);
         return;
       }
       for (let choice of this.raw.courses[I]) {

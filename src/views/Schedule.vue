@@ -20,7 +20,7 @@
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
       <template v-for="c in getPeriods(result)">
         <div
-          v-bind:key="c.p.range[0]"
+          v-bind:key="c.key"
           class="card"
           :style="cardStyle(c.c.title, c.p.range)"
           @click="disperse(c.c)"
@@ -115,15 +115,17 @@ export default {
 
     getPeriods(r) {
       const s = { set: new Set(), list: [] };
+      const count = {};
       r.forEach(e => {
         e.periods.forEach(p => {
           if (!s.set.has(p.range.toString())) {
             s.set.add(p.range.toString());
-            s.list.push({ c: e, p: p });
+            if (!count[e.title]) count[e.title] = 0;
+            count[e.title]++;
+            s.list.push({ c: e, p: p, key: `${e.title}-${count[e.title]}` });
           }
         });
       });
-      console.log(s.set);
       return s.list;
     },
 
@@ -131,7 +133,7 @@ export default {
       let cot = 0;
       for (let c of this.result) {
         this.colorMap[c.title] =
-          c.title == this.dispersed.title
+          this.dispersed && c.title == this.dispersed.title
             ? this.dispersedColor
             : this.colors[cot];
         cot++;
@@ -225,7 +227,7 @@ div.card {
 
   box-shadow: 1px 1px 2px #999;
   background-color: #fff;
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
 
   display: flex;
   flex-direction: column;
