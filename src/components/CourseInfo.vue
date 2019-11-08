@@ -48,7 +48,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(['quarter'])
+    ...mapState(["quarter"])
   },
   mounted() {
     this.loadCourse();

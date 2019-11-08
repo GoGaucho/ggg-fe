@@ -16,8 +16,7 @@ export default {
     FindCourse
   },
   data() {
-    return {
-    };
+    return {};
   }
 };
 </script>

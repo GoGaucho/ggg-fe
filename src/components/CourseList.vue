@@ -1,25 +1,22 @@
 <template>
   <div class="course-list">
     <div v-for="c in courseList.list" :key="c.id" class="course-card">
-      <CourseInfo v-if="expanded == c.id" :id="c.id"/>
+      <CourseInfo v-if="expanded == c.id" :id="c.id" />
       <div v-else class="row whole" @click="expand(c.id)">
         <div class="row left">
-          <h3>>&nbsp;{{c.id}}</h3> 
-          <el-tag 
-            v-for="ge in courseList.ge" 
-            v-if="c[ge]"
+          <h3>>&nbsp;{{c.id}}</h3>
+          <el-tag
+            v-for="ge in courseList.ge.filter(x => c[x])"
+            v-bind:key="ge"
             style="opacity: 0.5;border-color: #000; color: #000; margin-left: 5px;"
-            :color="colorMap[ge]">{{ge}}</el-tag>
+            :color="colorMap[ge]"
+          >{{ge}}</el-tag>
         </div>
         <div class="row right">
-          <el-button 
-            style="margin-left: 10px;"
-            size="small"
-            @click.stop="addSelected(c.id)">ADD</el-button>  
+          <el-button style="margin-left: 10px;" size="small" @click.stop="addSelected(c.id)">ADD</el-button>
         </div>
       </div>
     </div>
-    
   </div>
 </template>
 
@@ -35,7 +32,7 @@ export default {
   },
   data() {
     return {
-      expanded: '',
+      expanded: "",
       colors: [
         "#ff7875",
         "#ffbb96",
@@ -51,10 +48,10 @@ export default {
         "#ffadd2"
       ],
       colorMap: []
-    }
+    };
   },
   computed: {
-    ...mapState(["courseList", "quarter"]),
+    ...mapState(["courseList", "quarter"])
   },
   watch: {
     courseList: function() {
@@ -68,9 +65,9 @@ export default {
   methods: {
     ...mapMutations(["addSelected", "setCourse"]),
     expand: function(id) {
-      if (this.expanded == id) this.expand = '';
+      if (this.expanded == id) this.expand = "";
       else this.expanded = id;
-    },
+    }
   }
 };
 </script>
@@ -96,9 +93,15 @@ div.row {
   display: flex;
   align-items: center;
 }
-div.whole { justify-content: space-between; }
-div.left { justify-content: flex-start; }
-div.right { justify-content: flex-end; }
+div.whole {
+  justify-content: space-between;
+}
+div.left {
+  justify-content: flex-start;
+}
+div.right {
+  justify-content: flex-end;
+}
 
 h1,
 h3,
