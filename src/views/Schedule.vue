@@ -22,13 +22,13 @@
         <el-tooltip v-bind:key="c.key" effect="light">
           <div class="tooltip" slot="content">
             {{c.c.title}}
-            <br>
+            <br />
             EnrollCode: {{c.c.enrollCode}}
-            <br>
+            <br />
             {{range2time(c.p.range)}}
-            <br>
+            <br />
             {{c.p.location}}
-            <br>
+            <br />
           </div>
           <div class="card" :style="cardStyle(c.c.title, c.p.range)" @click="disperse(c.c)">
             {{c.c.title}}
