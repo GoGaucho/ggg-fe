@@ -271,11 +271,15 @@ export default {
     dfs: async function(I) {
       if (!this.calculating) return;
       if (this.results.length > 999) return; // prevent over calculate
+      if (Math.random() > 0.8) {
+        await sleep(20);
+        await this.$forceUpdate();
+      }
       if (!this.raw.courses[I]) {
         // success for one solution
         this.numSolution++;
         this.addResults(this.chosen);
-        await sleep(10); // sleep time FLAG
+        await sleep(100); // sleep time FLAG
         return;
       }
       for (let choice of this.raw.courses[I]) {
