@@ -24,7 +24,7 @@ import { mapState } from "vuex";
 
 export default {
   name: "TimeTable",
-  props:["res"],
+  props: ["res"],
   methods: {
     tableRowClassName({ row, rowIndex }) {
       if (row.disabled) return "disabled-row";

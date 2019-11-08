@@ -13,7 +13,7 @@
         </template>
       </el-table-column>
       <el-table-column v-for="ge in data.ge" :prop="ge" :label="ge" align="center" v-bind:key="ge" />
-    </el-table>  
+    </el-table>
   </div>
 </template>
 

@@ -3,18 +3,17 @@ import Vuex from 'vuex'
 
 Vue.use(Vuex)
 
+const init = (key, def) => ((a) => a ? def !== "" ? JSON.parse(a) : a : def)(localStorage.getItem(key));
+
 export default new Vuex.Store({
   state: {
-    quarter: (() => { const a = localStorage.quarter; return a ? a : ""; })(),
-    selected: (() => { const a = localStorage.selected; return a ? JSON.parse(a) : []; })(),
-    events: (() => { const a = localStorage.events; return a ? JSON.parse(a) : []; })(),
-    limit: (() => {
-      const a = localStorage.limit;
-      return a ? JSON.parse(a) : {
-        timerange: [new Date(0, 0, 0, 0, 0), new Date(0, 0, 0, 23, 59)],
-        break: 10,
-      }
-    })(),
+    quarter: init("quarter", ""),
+    selected: init("selected", []),
+    events: init("events", []),
+    limit: init("limit", {
+      timerange: [new Date(0, 0, 0, 8, 0), new Date(0, 0, 0, 22, 0)],
+      break: 10,
+    }),
 
     courseList: { list: [], ge: [] },
     course: null,
