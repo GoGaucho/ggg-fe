@@ -1,6 +1,6 @@
 <template>
   <div class="course-info">
-    <div class="loading" v-if="loading">Loading ...</div>
+    <div class="loading" v-if="loading">{{id}}'s information is loading ...</div>
     <div v-if="course">
       <h2>
         {{course.courseId}} : {{course.title}} &nbsp;
@@ -36,7 +36,7 @@ export default {
   components: {
     TimeTable
   },
-  props: ["detail"],
+  props: ["id"],
   data() {
     return {
       loading: false,
@@ -47,19 +47,22 @@ export default {
       GEs: ""
     };
   },
+  computed: {
+    ...mapState(['quarter'])
+  },
   mounted() {
-    this.loadCourse(this.detail.name);
+    this.loadCourse();
   },
   methods: {
     ...mapMutations(["addSelected"]),
 
-    loadCourse(c) {
+    loadCourse() {
       this.loading = true;
       axios // get course info
         .get("/api/sche/getClassByID", {
           params: {
-            q: this.detail.quarter,
-            id: c
+            q: this.quarter,
+            id: this.id
           }
         })
         .then(resp => {
@@ -150,9 +153,6 @@ export default {
 
 <style scoped>
 div.loading {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
   color: #036;
   font-size: 1.2rem;
 }

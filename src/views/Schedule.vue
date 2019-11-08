@@ -168,7 +168,7 @@ div.card {
 
   box-shadow: 1px 1px 2px #999;
   background-color: #fff;
-  transition: all 1s ease;
+  transition: all 0.5s ease;
 
   display: flex;
   flex-direction: column;

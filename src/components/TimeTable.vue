@@ -6,7 +6,6 @@
       style="width: 100%;"
       row-key="enrollCode"
       :row-class-name="tableRowClassName"
-      default-expand-all
     >
       <el-table-column prop="enrollCode" label="EnrollCode" width="100" align="center" />
       <el-table-column prop="instructor" label="Instructor" align="center" />
