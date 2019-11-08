@@ -19,18 +19,25 @@
     <div class="table">
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
       <template v-for="c in getPeriods(result)">
-        <div
-          v-bind:key="c.key"
-          class="card"
-          :style="cardStyle(c.c.title, c.p.range)"
-          @click="disperse(c.c)"
-        >
-          {{c.c.title}}
-          <br />
-          {{range2time(c.p.range)}}
-          <br />
-          {{c.c.location}}
-        </div>
+        <el-tooltip v-bind:key="c.key" effect="light">
+          <div class="tooltip" slot="content">
+            {{c.c.title}}
+            <br>
+            EnrollCode: {{c.c.enrollCode}}
+            <br>
+            {{range2time(c.p.range)}}
+            <br>
+            {{c.p.location}}
+            <br>
+          </div>
+          <div class="card" :style="cardStyle(c.c.title, c.p.range)" @click="disperse(c.c)">
+            {{c.c.title}}
+            <br />
+            {{range2time(c.p.range)}}
+            <br />
+            {{c.c.location}}
+          </div>
+        </el-tooltip>
       </template>
     </div>
   </div>
@@ -178,12 +185,6 @@ export default {
       if (min < 10) min = "0" + String(min);
       res += hour + ":" + min;
       return res;
-    },
-
-    viewInfo: function(c) {
-      let info = "";
-      info += "EnrollCode: " + c.enrollCode;
-      swal(c.title, info, "success");
     }
   }
 };
@@ -218,6 +219,7 @@ div.table {
   width: 90%;
   height: calc(100vh - 160px);
 }
+
 div.card {
   position: absolute;
   width: 18%;

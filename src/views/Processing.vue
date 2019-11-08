@@ -246,7 +246,7 @@ export default {
                 ss.maxEnroll - ss.enrolledTotal
               ),
               enrollCode:
-                String(l.lecture.enrollCode) + ", " + String(ss.enrollCode),
+                String(ss.enrollCode),
               periods: getCoursePeriods(l.lecture, ss)
             });
           }
