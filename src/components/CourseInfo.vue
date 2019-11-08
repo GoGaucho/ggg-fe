@@ -1,30 +1,28 @@
 <template>
-  <div>
+  <div class="course-info">
     <div class="loading" v-if="loading">Loading ...</div>
-    <div class="course-info">
-      <div v-if="course">
-        <h2>
-          {{course.courseId}} : {{course.title}} &nbsp;
-          <span
-            @click="addSelected(course.courseId)"
-            class="add"
-          >ADD to List</span>
-        </h2>
-        <p>{{course.description}}</p>
-        <div class="note">
-          <strong>Grading :</strong>
-          {{gradingOption}}
-        </div>
-        <div class="note">
-          <strong>Unit :</strong>
-          {{units}}
-        </div>
-        <div class="note">
-          <strong>GE :</strong>
-          {{GEs}}
-        </div>
-        <TimeTable v-if="res" v-bind:res="res" />
+    <div v-if="course">
+      <h2>
+        {{course.courseId}} : {{course.title}} &nbsp;
+        <span
+          @click="addSelected(course.courseId)"
+          class="add"
+        >ADD to List</span>
+      </h2>
+      <p>{{course.description}}</p>
+      <div class="note">
+        <strong>Grading :</strong>
+        {{gradingOption}}
       </div>
+      <div class="note">
+        <strong>Unit :</strong>
+        {{units}}
+      </div>
+      <div class="note">
+        <strong>GE :</strong>
+        {{GEs}}
+      </div>
+      <TimeTable v-if="res" v-bind:res="res" />
     </div>
   </div>
 </template>
@@ -160,8 +158,7 @@ div.loading {
 }
 
 div.course-info {
-  width: 90%;
-  margin: 20px 10px;
+  width: 100%;
 }
 
 span.add {

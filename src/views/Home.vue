@@ -1,18 +1,18 @@
 <template>
   <div class="home">
     <FindCourse />
-    <CourseList />
+    <SelectedList />
   </div>
 </template>
 
 <script>
-import CourseList from "@/components/CourseList.vue";
+import SelectedList from "@/components/SelectedList.vue";
 import FindCourse from "@/components/FindCourse.vue";
 
 export default {
   name: "Home",
   components: {
-    CourseList,
+    SelectedList,
     FindCourse
   },
   data() {

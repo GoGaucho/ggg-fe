@@ -1,63 +1,66 @@
 <template>
   <div class="course-list">
-    <h1>Selected Courses</h1>
-    <hr />
-    <div v-if="!selected.length" class="remove">Empty</div>
-    <div v-for="c in selected" class="course" v-bind:key="c">
-      <strong>{{c}}</strong>
-      <div class="remove" @click="removeSelected(c)">remove</div>
-    </div>
-    <Action />
+    <el-table :data="data.list" v-if="data.list.length" style="width: 100%;">
+      <el-table-column fixed type="expand">
+        <template slot-scope="scope" style="padding: 20px 10px;">
+          <CourseInfo v-bind:detail="scope.row.detail" />
+        </template>
+      </el-table-column>
+      <el-table-column fixed prop="name" label="Course" align="center" />
+      <el-table-column fixed label="ADD" width="80" align="center">
+        <template slot-scope="scope" v-if="scope.row.name">
+          <el-button size="mini" @click="addSelected(scope.row.name)">ADD</el-button>
+        </template>
+      </el-table-column>
+      <el-table-column v-for="ge in data.ge" :prop="ge" :label="ge" align="center" v-bind:key="ge" />
+    </el-table>  
   </div>
 </template>
 
 <script>
 import { mapState, mapMutations } from "vuex";
-import Action from "@/components/Action.vue";
+import Selector from "@/components/Selector.vue";
+import CourseInfo from "@/components/CourseInfo.vue";
 
 export default {
   name: "CourseList",
   components: {
-    Action
+    CourseInfo
   },
   computed: {
-    ...mapState(["selected"])
+    ...mapState(["courseList", "quarter"]),
+    data: function() {
+      const ans = {
+        list: this.courseList.list,
+        ge: this.courseList.ge
+      };
+      this.courseList.list.forEach(
+        e => (e.detail = { quarter: this.quarter, name: e.name })
+      );
+      return ans;
+    }
   },
   methods: {
-    ...mapMutations(["removeSelected"])
+    ...mapMutations(["addSelected", "setCourse"])
   }
 };
 </script>
 
 <style scoped>
 div.course-list {
-  width: 200px;
-  height: auto;
-  min-height: 280px;
-  margin: 20px;
+  width: calc(100% - 20px);
+  margin: 20px 0;
   padding: 10px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-  border-radius: 5px;
-  box-shadow: 2px 2px 5px #999;
+  text-align: left;
   background-color: #fff;
 }
 
-div.course {
-  width: 90%;
-  margin: 10px auto;
-  font-size: 1.3rem;
-
+div.row {
   display: flex;
-  justify-content: space-between;
+  width: 100%;
+  margin: 20px 0;
+  justify-content: flex-start;
   align-items: center;
-}
-
-div.remove {
-  color: #369;
-  font-size: 1rem;
 }
 
 h1,
@@ -66,9 +69,13 @@ h5 {
   color: #036;
 }
 
+strong {
+  margin: 0 10px;
+  color: #036;
+}
+
 hr {
-  width: 80%;
-  margin-top: 0;
+  width: 80;
   border: 1px solid;
   border-color: #036;
   border-radius: 1px;

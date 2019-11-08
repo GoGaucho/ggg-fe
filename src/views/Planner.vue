@@ -1,6 +1,6 @@
 <template>
   <div class="planner">
-    <CourseList />
+    <SelectedList />
     <div>
       <Events />
       <TimeLimit />
@@ -9,14 +9,14 @@
 </template>
 
 <script>
-import CourseList from "@/components/CourseList.vue";
+import SelectedList from "@/components/SelectedList.vue";
 import Events from "@/components/Events.vue";
 import TimeLimit from "@/components/TimeLimit.vue";
 
 export default {
   name: "Planner",
   components: {
-    CourseList,
+    SelectedList,
     Events,
     TimeLimit
   }

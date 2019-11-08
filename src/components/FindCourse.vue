@@ -2,20 +2,20 @@
   <div class="find-course">
     <h1>Find Courses</h1>
     <Selector />
-    <GETable />
+    <CourseList />
   </div>
 </template>
 
 <script>
 import { mapState, mapMutations } from "vuex";
 import Selector from "@/components/Selector.vue";
-import GETable from "@/components/GETable.vue";
+import CourseList from "@/components/CourseList.vue";
 
 export default {
   name: "FindCourse",
   components: {
     Selector,
-    GETable
+    CourseList
   }
 };
 </script>
