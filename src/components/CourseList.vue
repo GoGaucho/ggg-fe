@@ -1,19 +1,25 @@
 <template>
   <div class="course-list">
-    <el-table :data="data.list" v-if="data.list.length" style="width: 100%;">
-      <el-table-column fixed type="expand">
-        <template slot-scope="scope" style="padding: 20px 10px;">
-          <CourseInfo v-bind:detail="scope.row.detail" />
-        </template>
-      </el-table-column>
-      <el-table-column fixed prop="name" label="Course" align="center" />
-      <el-table-column fixed label="ADD" width="80" align="center">
-        <template slot-scope="scope" v-if="scope.row.name">
-          <el-button size="mini" @click="addSelected(scope.row.name)">ADD</el-button>
-        </template>
-      </el-table-column>
-      <el-table-column v-for="ge in data.ge" :prop="ge" :label="ge" align="center" v-bind:key="ge" />
-    </el-table>  
+    <div v-for="c in courseList.list" :key="c.id" class="course-card">
+      <CourseInfo v-if="expanded == c.id" :id="c.id"/>
+      <div v-else class="row whole" @click="expand(c.id)">
+        <div class="row left">
+          <h3>>&nbsp;{{c.id}}</h3> 
+          <el-tag 
+            v-for="ge in courseList.ge" 
+            v-if="c[ge]"
+            style="opacity: 0.5;border-color: #000; color: #000; margin-left: 5px;"
+            :color="colorMap[ge]">{{ge}}</el-tag>
+        </div>
+        <div class="row right">
+          <el-button 
+            style="margin-left: 10px;"
+            size="small"
+            @click.stop="addSelected(c.id)">ADD</el-button>  
+        </div>
+      </div>
+    </div>
+    
   </div>
 </template>
 
@@ -27,21 +33,44 @@ export default {
   components: {
     CourseInfo
   },
+  data() {
+    return {
+      expanded: '',
+      colors: [
+        "#ff7875",
+        "#ffbb96",
+        "#ffd591",
+        "#ffe58f",
+        "#fffb8f",
+        "#d3f261",
+        "#b7eb8f",
+        "#87e8de",
+        "#91d5ff",
+        "#adc6ff",
+        "#d3adf7",
+        "#ffadd2"
+      ],
+      colorMap: []
+    }
+  },
   computed: {
     ...mapState(["courseList", "quarter"]),
-    data: function() {
-      const ans = {
-        list: this.courseList.list,
-        ge: this.courseList.ge
-      };
-      this.courseList.list.forEach(
-        e => (e.detail = { quarter: this.quarter, name: e.name })
-      );
-      return ans;
+  },
+  watch: {
+    courseList: function() {
+      this.colorMap = [];
+      for (let i in this.courseList.ge) {
+        this.colorMap[this.courseList.ge[i]] = this.colors[i];
+      }
+      this.$forceUpdate();
     }
   },
   methods: {
-    ...mapMutations(["addSelected", "setCourse"])
+    ...mapMutations(["addSelected", "setCourse"]),
+    expand: function(id) {
+      if (this.expanded == id) this.expand = '';
+      else this.expanded = id;
+    },
   }
 };
 </script>
@@ -55,18 +84,27 @@ div.course-list {
   background-color: #fff;
 }
 
+div.course-card {
+  width: calc(100% - 40px);
+  margin: 10px 0;
+  padding: 10px 20px;
+  border-radius: 5px;
+  box-shadow: 1px 1px 2px #bbb;
+}
+
 div.row {
   display: flex;
-  width: 100%;
-  margin: 20px 0;
-  justify-content: flex-start;
   align-items: center;
 }
+div.whole { justify-content: space-between; }
+div.left { justify-content: flex-start; }
+div.right { justify-content: flex-end; }
 
 h1,
 h3,
 h5 {
   color: #036;
+  margin: 0px;
 }
 
 strong {

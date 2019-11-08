@@ -25,7 +25,7 @@
 
     <div v-if="by == 'Search' && options.quarter.length" class="row">
       <strong>General Search:</strong>
-      <el-input style="width: 50%; margin-right: 10px;" v-model="query.search"></el-input>
+      <el-input style="width: 50%; margin-right: 10px;" v-model="query.search" @keyup.enter.native="getList('course')"></el-input>
       <el-button type="primary" @click="getList('course')">Search</el-button>
     </div>
 
@@ -245,8 +245,8 @@ export default {
             }
           })
           .then(resp => {
-            const list = [];
-            for (let c of resp.data) list.push({ name: c, key: c });
+            let list = [];
+            for (let c of resp.data) list.push({id: c});
             this.setCourseList({ list: list, ge: [] });
             if (!resp.data.length) {
               swal(
@@ -273,7 +273,7 @@ export default {
           })
           .then(resp => {
             const list = [];
-            for (let c of resp.data) list.push({ name: c.id, key: c.id });
+            for (let c of resp.data) list.push({ id: c.id });
             list.sort();
             this.setCourseList({ list: list, ge: [] });
             this.loading = false;
@@ -290,7 +290,7 @@ export default {
           if (this.query.GE.indexOf(code.code) >= 0)
             code.list.forEach(c => {
               if (!list[c]) {
-                list[c] = { name: c, key: c, sum: 0 };
+                list[c] = { id: c, sum: 0 };
                 clist.push(c);
               }
               list[c][code.code] = "X";
