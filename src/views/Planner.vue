@@ -2,6 +2,7 @@
   <div class="planner">
     <SelectedList />
     <div>
+      <CourseTree />
       <Events />
       <TimeLimit />
     </div>
@@ -12,13 +13,15 @@
 import SelectedList from "@/components/SelectedList.vue";
 import Events from "@/components/Events.vue";
 import TimeLimit from "@/components/TimeLimit.vue";
+import CourseTree from "@/components/CourseTree.vue"
 
 export default {
   name: "Planner",
   components: {
     SelectedList,
     Events,
-    TimeLimit
+    TimeLimit,
+    CourseTree
   }
 };
 </script>
