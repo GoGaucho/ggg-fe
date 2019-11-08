@@ -6,6 +6,7 @@
         <el-button @click="$router.push({name: 'planner'})">Back</el-button>
       </div>
       <div class="row">
+        <p v-if="dispersed" style="margin-right: 10px;">group results for: {{dispersed.title}}</p>
         <el-button-group style="margin-right: 10px;">
           <el-button @click="choose(Number(I)-1)" size="small" icon="el-icon-arrow-left"></el-button>
           <el-button @click="choose(Number(I)+1)" size="small" icon="el-icon-arrow-right"></el-button>
@@ -17,19 +18,18 @@
     </div>
     <div class="table">
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
-      <template v-for="c in result">
+      <template v-for="c in getPeriods(result)">
         <div
-          v-for="p in c.periods"
-          v-bind:key="p.range[0]"
+          v-bind:key="c.p.range[0]"
           class="card"
-          :style="cardStyle(c.title, p.range)"
-          @click="viewInfo(c)"
+          :style="cardStyle(c.c.title, c.p.range)"
+          @click="disperse(c.c)"
         >
-          {{c.title}}
+          {{c.c.title}}
           <br />
-          {{range2time(p.range)}}
+          {{range2time(c.p.range)}}
           <br />
-          {{c.location}}
+          {{c.c.location}}
         </div>
       </template>
     </div>
@@ -45,6 +45,8 @@ export default {
     return {
       I: "0",
       options: [],
+      processedResults: null,
+      dispersed: null,
       result: [],
       dayNums: [1, 2, 3, 4, 5],
       days: ["", "Mon", "Tue", "Wed", "Thr", "Fri"],
@@ -57,34 +59,86 @@ export default {
         "#fff7e6",
         "#fff0f6"
       ],
+      dispersedColor: "#ffffff",
       colorMap: []
     };
   },
   mounted() {
-    for (let i in this.results) {
-      this.options.push({ label: "Result " + (Number(i) + 1), key: i });
-    }
-    this.choose(0);
-    setTimeout(this.addColor, 1000);
+    this.setList();
   },
   computed: {
     ...mapState(["results"])
   },
   methods: {
+    setList() {
+      if (this.processedResults == null) this.processedResults = this.results;
+      this.options = [];
+      for (let i in this.processedResults) {
+        this.options.push({
+          label: `Result ${+i + 1} / ${this.processedResults.length}`,
+          key: i
+        });
+      }
+      this.choose(0);
+      this.addColor();
+    },
+
     choose: function(I) {
-      if (!this.results[I]) return;
+      if (!this.processedResults[I]) return;
       this.I = String(I);
-      this.result = this.results[I];
+      this.result = this.processedResults[I];
       this.$forceUpdate();
     },
+
+    disperse: function(c) {
+      if (this.dispersed == c) {
+        this.dispersed = null;
+        this.processedResults = this.results;
+        this.setList();
+        return;
+      }
+      this.dispersed = c;
+      const map = new Map();
+      const ans = [];
+      this.results.forEach(r => {
+        let k = null;
+        const key = r
+          .filter(cx => (cx.title != c.title ? true : !(k = cx)))
+          .map(cx => cx.enrollCode)
+          .sort();
+        if (!map[key]) ans.push((map[key] = [...r]));
+        map[key].push(k);
+      });
+      this.processedResults = ans;
+      this.setList();
+    },
+
+    getPeriods(r) {
+      const s = { set: new Set(), list: [] };
+      r.forEach(e => {
+        e.periods.forEach(p => {
+          if (!s.set.has(p.range.toString())) {
+            s.set.add(p.range.toString());
+            s.list.push({ c: e, p: p });
+          }
+        });
+      });
+      console.log(s.set);
+      return s.list;
+    },
+
     addColor: function() {
       let cot = 0;
       for (let c of this.result) {
-        this.colorMap[c.title] = this.colors[cot];
+        this.colorMap[c.title] =
+          c.title == this.dispersed.title
+            ? this.dispersedColor
+            : this.colors[cot];
         cot++;
       }
       this.$forceUpdate();
     },
+
     headerStyle: function(dayNum) {
       let res = "";
       res += "height: 15px;";
@@ -92,6 +146,7 @@ export default {
       res += "left: " + 20 * (dayNum - 1) + "%;";
       return res;
     },
+
     cardStyle: function(title, range) {
       let res = "";
       let day = Math.floor(range[0] / 1440) + 1;
@@ -103,6 +158,7 @@ export default {
       res += "background-color: " + this.colorMap[title] + ";";
       return res;
     },
+
     range2time: function(range) {
       let res = "";
       let timenum = range[0];
@@ -121,6 +177,7 @@ export default {
       res += hour + ":" + min;
       return res;
     },
+
     viewInfo: function(c) {
       let info = "";
       info += "EnrollCode: " + c.enrollCode;
