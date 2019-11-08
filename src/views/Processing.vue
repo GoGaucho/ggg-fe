@@ -73,8 +73,9 @@ function getCoursePeriods(lec, sec) {
     days = tl.days.replace(/\s*/g, "");
     for (let d of days) {
       let period = {
-        location: tl.building + tl.room,
-        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]
+        location: tl.building + " - " + tl.room,
+        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)],
+        sec: lec.section
       };
       periods.push(period);
     }
@@ -84,8 +85,9 @@ function getCoursePeriods(lec, sec) {
     days = tl.days.replace(/\s*/g, "");
     for (let d of days) {
       let period = {
-        location: tl.building + tl.room,
-        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]
+        location: tl.building + " - " + tl.room,
+        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)],
+        sec: sec.section
       };
       periods.push(period);
     }
@@ -183,23 +185,19 @@ export default {
     },
     getCourseInfo: async function() {
       courseDetails = [];
-      for (let s of this.selected) {
-        await axios // get course info
-          .get("/api/sche/getClassByID", {
-            params: {
-              q: this.quarter,
-              id: s.replace(/\s*/g, "")
-            }
-          })
-          .then(resp => {
-            courseDetails.push(resp.data);
-          })
-          .catch(error => {
-            swal("ERROR", "Server Response Error", "error").then(() => {
-              this.$router.push({ name: "planner" });
-            });
+      await axios({
+        method: "post",
+        url: `/api/sche/getClassesByID?q=${this.quarter}`,
+        data: this.selected.map(s => s.replace(/\s*/g, ""))
+      })
+        .then(resp => {
+          courseDetails = resp.data;
+        })
+        .catch(error => {
+          swal("ERROR", "Server Response Error", "error").then(() => {
+            this.$router.push({ name: "planner" });
           });
-      }
+        });
     },
     getPeriods: async function() {
       this.raw = {
@@ -245,7 +243,8 @@ export default {
                 l.lecture.maxEnroll - l.lecture.enrolledTotal,
                 ss.maxEnroll - ss.enrolledTotal
               ),
-              enrollCode: String(ss.enrollCode),
+              enrollCode:
+                String(l.lecture.enrollCode) + ", " + String(ss.enrollCode),
               periods: getCoursePeriods(l.lecture, ss)
             });
           }

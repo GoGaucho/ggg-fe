@@ -21,14 +21,7 @@
       <template v-for="c in getPeriods(result)">
         <el-tooltip v-bind:key="c.key" effect="light">
           <div class="tooltip" slot="content">
-            {{c.c.title}}
-            <br />
-            EnrollCode: {{c.c.enrollCode}}
-            <br />
-            {{range2time(c.p.range)}}
-            <br />
-            {{c.p.location}}
-            <br />
+            <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
           <div class="card" :style="cardStyle(c.c.title, c.p.range)" @click="disperse(c.c)">
             {{c.c.title}}
@@ -51,6 +44,7 @@ export default {
   data() {
     return {
       I: "0",
+      courseDetails: { data: null },
       options: [],
       processedResults: null,
       dispersed: null,
@@ -71,12 +65,36 @@ export default {
     };
   },
   mounted() {
+    this.getCourseInfo();
     this.setList();
   },
   computed: {
-    ...mapState(["results"])
+    ...mapState(["quarter", "results", "selected"])
   },
   methods: {
+    getCourseInfo: async function() {
+      this.courseDetails.data = {};
+      await axios({
+        method: "post",
+        url: `/api/sche/getClassesByID?q=${this.quarter}`,
+        data: this.selected.map(s => s.replace(/\s*/g, ""))
+      })
+        .then(resp => {
+          resp.data.forEach(e => {
+            this.courseDetails.data[e.courseId.replace(/\s*/g, "")] = e;
+            const map = {};
+            e.classSections.forEach(s => (map[s.enrollCode] = s));
+            e.classSections = map;
+            this.$forceUpdate();
+          });
+        })
+        .catch(error => {
+          swal("ERROR", "Server Response Error", "error").then(() => {
+            this.$router.push({ name: "planner" });
+          });
+        });
+    },
+
     setList() {
       if (this.processedResults == null) this.processedResults = this.results;
       this.options = [];
@@ -121,19 +139,58 @@ export default {
     },
 
     getPeriods(r) {
-      const s = { set: new Set(), list: [] };
+      const s = { set: new Map(), list: [] };
       const count = {};
       r.forEach(e => {
+        const kl = [];
         e.periods.forEach(p => {
-          if (!s.set.has(p.range.toString())) {
-            s.set.add(p.range.toString());
+          const key = p.range.toString();
+          if (!s.set[key]) {
+            kl.push(key);
             if (!count[e.title]) count[e.title] = 0;
             count[e.title]++;
-            s.list.push({ c: e, p: p, key: `${e.title}-${count[e.title]}` });
-          }
+            const dat = {
+              c: e,
+              p: p,
+              ec: [e.enrollCode],
+              key: `${e.title}-${count[e.title]}`
+            };
+            s.set[key] = dat;
+            s.list.push(dat);
+          } else s.set[key].ec.push(e.enrollCode);
         });
       });
+      s.list.forEach(e => {
+        e.ec = e.ec.length > 1 ? ` (${e.ec.length} code)` : " - " + e.ec[0];
+      });
+
       return s.list;
+    },
+
+    getToolTip(c) {
+      let ans = [c.c.title + c.ec, this.range2time(c.p.range), c.p.location];
+      try {
+        const cla = this.courseDetails.data[c.c.title];
+        if ((this.dispersed && this.dispersed.title == c.c.title) || !cla)
+          return ans;
+        const enrs = c.c.enrollCode.split(", ");
+        const enr = enrs.reduce(
+          (s, e) => (cla.classSections[e].section == c.p.sec ? e : s),
+          null
+        );
+        const sec = cla.classSections[enr];
+        const ins = sec.instructors.map(e => e.instructor);
+        if (ins.length <= 1)
+          ans.push("Instructor: " + (ins[0] ? ins[0] : "T.B.A"));
+        else if (ins.length > 1) {
+          ans.push("Instructors: ");
+          ins.forEach(e => ans.push(e));
+        }
+      } catch (e) {
+        console.log(e);
+        return ans;
+      }
+      return ans;
     },
 
     addColor: function() {
