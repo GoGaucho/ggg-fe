@@ -6,15 +6,17 @@
       v-if="res.length"
       style="width: 100%;"
       row-key="enrollCode"
+      :span-method="getSpan"
       :row-class-name="tableRowClassName"
     >
-      <el-table-column prop="enrollCode" label="EnrollCode" width="120" align="center" />
-      <el-table-column prop="instructor" label="Instructor" align="center" />
-      <el-table-column prop="days" label="Days" width="70" align="center" />
-      <el-table-column prop="time" label="Time" width="110" align="center" />
-      <el-table-column prop="location" label="Location" align="center" />
-      <el-table-column prop="space" label="Space" width="65" align="center" />
-      <el-table-column prop="max" label="Max" width="50" align="center" />
+      <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column align="center" prop="enrollCode" label="EnrollCode" width="120" fixed />
+      <el-table-column align="center" prop="instructor" label="Instructor" />
+      <el-table-column align="center" prop="days" label="Days" width="70" />
+      <el-table-column align="center" prop="time" label="Time" width="110" />
+      <el-table-column align="center" prop="location" label="Location" />
+      <el-table-column align="center" prop="space" label="Space" width="65" />
+      <el-table-column align="center" prop="max" label="Max" width="50" />
     </el-table>
   </div>
 </template>
@@ -137,77 +139,98 @@ export default {
             res.push(ss);
           } else {
             ss.status = "section";
-            res[res.length - 1].children.push(ss);
+            const par = res[res.length - 1];
+            ss.parent = par;
+            par.children.push(ss);
           }
         }
-        list.push({
+        const par = {
           status: "course",
-          enrollCode: c.courseId,
+          enrollCode: c.courseId.replace(/\s*/g, "") + " - " + c.title,
           title: c.title,
           children: res
-        });
+        };
+        res.forEach(lec => (lec.parent = par));
+        list.push(par);
       }
       this.res = list;
     },
 
-    setLectureStatus(c, lec, act) {
-      toggleStatus(lec.select, act);
-      suppressStatus(lec);
-      refreshLectures(c);
-    },
+    setStatus(row, act) {
+      const toggleStatus = s => {
+        switch (s.status + act * 3) {
+          case 0:
+          case 2:
+            s.status = 1;
+            break;
+          case 1:
+          case 5:
+            s.status = 0;
+            break;
+          case 3:
+          case 4:
+            s.status = 2;
+            break;
+          default:
+            console.log("unexpected switch result");
+        }
+      };
 
-    setSectionStatus(c, lec, sec, act) {
-      toggleStatus(sec.select, act);
-      refreshSections(c, lec);
-    },
+      const refreshSections = lec => {
+        const csele = lec.children.reduce(
+          (c, s) => (s.select.status == 1 ? c + 1 : c),
+          0
+        );
 
-    suppressStatus(lec) {
-      lec.children.forEach(e => {
-        e.select.suppressed = lec.select.status == 2 ? 1 : 0;
-        e.select.selebtn =
-          lec.select.status == 2 ? 2 : e.select.status == 1 ? 1 : 0;
-        e.select.delbtn =
-          lec.select.status == 2 ? 2 : e.select.status == 2 ? 1 : 0;
-      });
-    },
+        const crem = lec.children.reduce(
+          (c, s) => (s.select.status == 2 ? c + 1 : c),
+          0
+        );
 
-    refreshSections(c, lec) {
-      const csele = lec.children.reduce(
-        (c, s) => (s.select.status == 1 ? c + 1 : c),
-        0
-      );
+        lec.children.forEach(s => {
+          s.select.deprecated = s.select.status == 0 && csele > 0 ? 1 : 0;
+          s.select.selebtn = s.select.status == 1 ? 1 : 0;
+          s.select.delbtn = s.select.status == 2 ? 1 : 0;
+        });
 
-      const crem = lec.children.reduce(
-        (c, s) => (s.select.status == 2 ? c + 1 : c),
-        0
-      );
+        lec.status.lower = csele > 0 ? 1 : crem == lec.children.length ? 2 : 0;
+      };
 
-      lec.children.forEach(s => {
-        s.select.deprecated = s.select.status == 0 && csele > 0 ? 1 : 0;
-        s.select.selebtn = s.select.status == 1 ? 1 : 0;
-        s.select.delbtn = s.select.status == 2 ? 1 : 0;
-      });
+      const refreshLectures = c => {
+        const csele = c.children.reduce(
+          (c, s) => (s.select.status == 1 || s.select.lower == 1 ? c + 1 : c),
+          0
+        );
 
-      lec.status.lower = csele > 0 ? 1 : crem == lec.children.length ? 2 : 0;
+        c.children.forEach(l => {
+          l.select.deprecated =
+            l.select.lower == 2 ||
+            (l.select.status == 0 && l.select.lower != 2 && csele > 0)
+              ? 1
+              : 0;
+          l.select.selebtn = l.select.status == 1 ? 1 : 0;
+          l.select.delbtn = l.select.status == 2 ? 1 : 0;
+        });
+      };
 
-      refreshLectures(c);
-    },
+      const suppressSections = lec => {
+        lec.children.forEach(e => {
+          e.select.suppressed = lec.select.status == 2 ? 1 : 0;
+          e.select.selebtn =
+            lec.select.status == 2 ? 2 : e.select.status == 1 ? 1 : 0;
+          e.select.delbtn =
+            lec.select.status == 2 ? 2 : e.select.status == 2 ? 1 : 0;
+        });
+      };
 
-    refreshLectures(c) {
-      const csele = c.children.reduce(
-        (c, s) => (s.select.status == 1 || s.select.lower == 1 ? c + 1 : c),
-        0
-      );
-
-      c.children.forEach(l => {
-        l.select.deprecated =
-          s.select.lower == 2 ||
-          (l.select.status == 0 && s.select.lower != 2 && csele > 0)
-            ? 1
-            : 0;
-        l.select.selebtn = l.select.status == 1 ? 1 : 0;
-        l.select.delbtn = l.select.status == 2 ? 1 : 0;
-      });
+      toggleStatus(row.select);
+      if (row.status == "lecture") {
+        suppressSections(row);
+        refreshLectures(row.parent);
+      } else if (row.status == "section") {
+        refreshSections(row.parent);
+        refreshLectures(row.parent.parent);
+      }
     },
 
     getStatus(s) {
@@ -220,23 +243,10 @@ export default {
       return 0;
     },
 
-    toggleStatus(s, act) {
-      switch (s.status + act * 3) {
-        case 0:
-        case 2:
-          s.status = 1;
-          break;
-        case 1:
-        case 5:
-          s.status = 0;
-          break;
-        case 3:
-        case 4:
-          s.status = 2;
-          break;
-        default:
-          console.log("unexpected switch result");
-      }
+    getSpan({ row, column, rowIndex, columnIndex }) {
+      if (row.status == "course")
+        if (columnIndex == 1) return [1, 7];
+        else if (columnIndex > 1) return [0, 0];
     },
 
     tableRowClassName({ row, rowIndex }) {
@@ -255,5 +265,11 @@ div.course-tree {
 
 div.row {
   display: flex;
+}
+</style>
+
+<style>
+.el-table .course-row {
+  text-align: left;
 }
 </style>
