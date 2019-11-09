@@ -1,23 +1,25 @@
 <template>
   <div class="course-tree">
     <div v-if="loading">Loading...</div>
-    <el-table
+    <el-tree
       :data="res"
       v-if="res.length"
       style="width: 100%;"
-      row-key="enrollCode"
-      :span-method="getSpan"
-      :row-class-name="tableRowClassName"
+      node-key="enrollCode"
+      :default-checked-keys="checkList"
+      accordion
+      show-checkbox
     >
-      <el-table-column type="selection" width="55"></el-table-column>
-      <el-table-column align="center" prop="enrollCode" label="EnrollCode" width="120" fixed />
-      <el-table-column align="center" prop="instructor" label="Instructor" />
-      <el-table-column align="center" prop="days" label="Days" width="70" />
-      <el-table-column align="center" prop="time" label="Time" width="110" />
-      <el-table-column align="center" prop="location" label="Location" />
-      <el-table-column align="center" prop="space" label="Space" width="65" />
-      <el-table-column align="center" prop="max" label="Max" width="50" />
-    </el-table>
+      <template slot-scope="scope">
+        {{scope.data.enrollCode}}
+        {{scope.data.space}}
+        {{scope.data.max}}
+        {{scope.data.days}}
+        {{scope.data.time}}
+        {{scope.data.location}}
+        {{scope.data.instructor}}
+      </template>
+    </el-tree>
   </div>
 </template>
 
@@ -46,7 +48,8 @@ export default {
     return {
       loading: false,
       courses: [],
-      res: []
+      res: [],
+      checkList: []
     };
   },
   computed: {
@@ -80,6 +83,15 @@ export default {
 
     getData: function() {
       const list = [];
+      const check = l => {
+        l.forEach(e => {
+          if (!e.children)
+            if (!ss.disables && ss.space > 0)
+              this.checkList.push(ss.enrollCode);
+            else check(e.children);
+        });
+      };
+
       for (let c of this.courses) {
         let res = [];
         for (let i in c.classSections) {
@@ -95,10 +107,10 @@ export default {
             }
           };
           ss.enrollCode = s.enrollCode;
-          ss.disabled = s.courseCancelled || s.classClosed;
+          ss.disables = s.courseCancelled || s.classClosed;
           ss.max = s.maxEnroll;
           ss.space = s.maxEnroll - s.enrolledTotal;
-          if (ss.space <= 0 || ss.disabled) ss.select.status = 2;
+          if (ss.space <= 0 || ss.disables) ss.select.status = 2;
 
           for (let i in s.instructors) {
             if (i == 0) ss.instructor = "";
@@ -144,10 +156,11 @@ export default {
             par.children.push(ss);
           }
         }
+        check(res);
         const par = {
           status: "course",
           enrollCode: c.courseId.replace(/\s*/g, "") + " - " + c.title,
-          title: c.title,
+          courseId: c.courseId.replace(/\s*/g, ""),
           children: res
         };
         res.forEach(lec => (lec.parent = par));
