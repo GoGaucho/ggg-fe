@@ -7,11 +7,13 @@
       style="width: 100%;"
       node-key="enrollCode"
       :default-checked-keys="checkList"
+      @check="setSelection"
       accordion
       show-checkbox
     >
       <template slot-scope="scope">
         {{scope.data.enrollCode}}
+        {{scope.data.count}}
         {{scope.data.space}}
         {{scope.data.max}}
         {{scope.data.days}}
@@ -25,21 +27,6 @@
 
 <script>
 import { mapState, mapMutations } from "vuex";
-
-// real status: priortized, normal, deleted
-// detail status: 10: selected, 11: lo-selected, 0: normal, 21:deprecated, 22:lo-deleted, 23:hi-deleted, 20:deleted
-
-// select status: none = 0, selected = 1, removed = 2
-// side status: none = 0, deprecated = 1
-// lower status: none = 0, recommended = 1, as-removed = 2
-// upper status: none = 0, sup-removed = 1
-// action: select / deselect = 0, remove / de-remove = 1
-// 0: none + select = selected
-// 1: selected + deselect = none
-// 2: removed + select = selected
-// 3: none + remove = removed
-// 4: selected + remove = removed
-// 5: remove + de-remove = none
 
 export default {
   name: "CourseTree",
@@ -55,11 +42,33 @@ export default {
   computed: {
     ...mapState(["selected", "quarter"])
   },
+  watch: {
+    selected: function() {
+      console.log("changed");
+      let removed = null;
+      this.res = this.res.filter(c => {
+        const ans = this.selected.indexOf(c.courseId) >= 0;
+        if (!ans) removed = c;
+        return ans;
+      });
+
+      const remlist = removed.children.reduce((list, l) => {
+        list.push(l.enrollCode);
+        if (l.children) l.children.forEach(s => list.push(s.enrollCode));
+        return list;
+      }, []);
+
+      const remf = e => remlist.indexOf(e) < 0;
+
+      this.checkList = this.checkList.filter(remf);
+      this.setCheckedEC(this.checkList.filter(remf));
+    }
+  },
   mounted() {
     this.getCourseInfo();
   },
   methods: {
-    ...mapMutations(["addSelected", "setCourse"]),
+    ...mapMutations(["addSelected", "setCourse", "setCheckedEC"]),
 
     getCourseInfo: async function() {
       this.loading = true;
@@ -74,21 +83,28 @@ export default {
           this.loading = false;
         })
         .catch(error => {
+          console.log(error);
           this.loading = false;
-          swal("ERROR", "Server Response Error", "error").then(() => {
-            this.$router.push({ name: "planner" });
-          });
+          swal("ERROR", "Server Response Error", "error");
         });
+    },
+
+    setSelection(a, data) {
+      const filt = e => e.length == 5;
+      const c0 = data.checkedKeys.filter(filt);
+      this.checkList = c0;
+      const c1 = data.halfCheckedKeys.filter(filt);
+      this.setCheckedEC([...c0, ...c1]);
     },
 
     getData: function() {
       const list = [];
       const check = l => {
-        l.forEach(e => {
-          if (!e.children)
+        l.forEach(ss => {
+          if (!ss.children || !ss.children.length) {
             if (!ss.disables && ss.space > 0)
               this.checkList.push(ss.enrollCode);
-            else check(e.children);
+          } else check(ss.children);
         });
       };
 
@@ -96,21 +112,11 @@ export default {
         let res = [];
         for (let i in c.classSections) {
           let s = c.classSections[i];
-          let ss = {
-            select: {
-              status: 0,
-              deprecated: 0,
-              selebtn: 0,
-              delbtn: 0,
-              suppressed: 0,
-              lower: 0
-            }
-          };
+          let ss = {};
           ss.enrollCode = s.enrollCode;
           ss.disables = s.courseCancelled || s.classClosed;
           ss.max = s.maxEnroll;
           ss.space = s.maxEnroll - s.enrolledTotal;
-          if (ss.space <= 0 || ss.disables) ss.select.status = 2;
 
           for (let i in s.instructors) {
             if (i == 0) ss.instructor = "";
@@ -151,99 +157,18 @@ export default {
             res.push(ss);
           } else {
             ss.status = "section";
-            const par = res[res.length - 1];
-            ss.parent = par;
-            par.children.push(ss);
+            res[res.length - 1].children.push(ss);
           }
         }
         check(res);
-        const par = {
+        list.push({
           status: "course",
           enrollCode: c.courseId.replace(/\s*/g, "") + " - " + c.title,
           courseId: c.courseId.replace(/\s*/g, ""),
           children: res
-        };
-        res.forEach(lec => (lec.parent = par));
-        list.push(par);
+        });
       }
       this.res = list;
-    },
-
-    setStatus(row, act) {
-      const toggleStatus = s => {
-        switch (s.status + act * 3) {
-          case 0:
-          case 2:
-            s.status = 1;
-            break;
-          case 1:
-          case 5:
-            s.status = 0;
-            break;
-          case 3:
-          case 4:
-            s.status = 2;
-            break;
-          default:
-            console.log("unexpected switch result");
-        }
-      };
-
-      const refreshSections = lec => {
-        const csele = lec.children.reduce(
-          (c, s) => (s.select.status == 1 ? c + 1 : c),
-          0
-        );
-
-        const crem = lec.children.reduce(
-          (c, s) => (s.select.status == 2 ? c + 1 : c),
-          0
-        );
-
-        lec.children.forEach(s => {
-          s.select.deprecated = s.select.status == 0 && csele > 0 ? 1 : 0;
-          s.select.selebtn = s.select.status == 1 ? 1 : 0;
-          s.select.delbtn = s.select.status == 2 ? 1 : 0;
-        });
-
-        lec.status.lower = csele > 0 ? 1 : crem == lec.children.length ? 2 : 0;
-      };
-
-      const refreshLectures = c => {
-        const csele = c.children.reduce(
-          (c, s) => (s.select.status == 1 || s.select.lower == 1 ? c + 1 : c),
-          0
-        );
-
-        c.children.forEach(l => {
-          l.select.deprecated =
-            l.select.lower == 2 ||
-            (l.select.status == 0 && l.select.lower != 2 && csele > 0)
-              ? 1
-              : 0;
-          l.select.selebtn = l.select.status == 1 ? 1 : 0;
-          l.select.delbtn = l.select.status == 2 ? 1 : 0;
-        });
-      };
-
-      const suppressSections = lec => {
-        lec.children.forEach(e => {
-          e.select.suppressed = lec.select.status == 2 ? 1 : 0;
-          e.select.selebtn =
-            lec.select.status == 2 ? 2 : e.select.status == 1 ? 1 : 0;
-          e.select.delbtn =
-            lec.select.status == 2 ? 2 : e.select.status == 2 ? 1 : 0;
-        });
-      };
-
-      toggleStatus(row.select);
-      if (row.status == "lecture") {
-        suppressSections(row);
-        refreshLectures(row.parent);
-      } else if (row.status == "section") {
-        refreshSections(row.parent);
-        refreshLectures(row.parent.parent);
-      }
     },
 
     getStatus(s) {
@@ -254,18 +179,6 @@ export default {
       if (s.lower == 1) return 11;
       if (s.deprecated == 1) return 21;
       return 0;
-    },
-
-    getSpan({ row, column, rowIndex, columnIndex }) {
-      if (row.status == "course")
-        if (columnIndex == 1) return [1, 7];
-        else if (columnIndex > 1) return [0, 0];
-    },
-
-    tableRowClassName({ row, rowIndex }) {
-      if (row.status == "course") return "course-row";
-      if (row.status == "lecture") return "lecture-row";
-      return "section-row";
     }
   }
 };
@@ -273,16 +186,14 @@ export default {
 
 <style scoped>
 div.course-tree {
+  padding: 10px 20px;
   margin: 20px 0;
+  border-radius: 5px;
+  box-shadow: 2px 2px 5px #999;
+  background-color: #fff;
 }
 
 div.row {
   display: flex;
-}
-</style>
-
-<style>
-.el-table .course-row {
-  text-align: left;
 }
 </style>

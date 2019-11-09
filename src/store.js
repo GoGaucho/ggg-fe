@@ -16,6 +16,7 @@ export default new Vuex.Store({
     }),
 
     courseList: { list: [], ge: [] },
+    checkedEnrollCode: [],
     course: null,
     results: [],
   },
@@ -90,6 +91,10 @@ export default new Vuex.Store({
 
     clearResults(state) {
       state.results = [];
+    },
+
+    setCheckedEC(state, list) {
+      state.checkedEnrollCode = list;
     }
   },
   actions: {

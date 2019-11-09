@@ -52,6 +52,7 @@ function sleep(ms) {
 }
 
 function daytime2num(day, timeString) {
+  if (timeString.Format) timeString = timeString.Format("HH:mm");
   let dayNum = 1;
   if (day == "M") dayNum = 1;
   if (day == "T") dayNum = 2;
@@ -204,8 +205,8 @@ export default {
         courses: [],
         events: [],
         break: this.limit.break,
-        begin: daytime2num("", this.limit.timerange[0].Format("HH:mm")),
-        end: daytime2num("", this.limit.timerange[1].Format("HH:mm"))
+        begin: daytime2num("", this.limit.timerange[0]),
+        end: daytime2num("", this.limit.timerange[1])
       };
       for (let c of courseDetails) {
         let course = [];
