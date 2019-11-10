@@ -44,7 +44,6 @@ export default {
   data() {
     return {
       I: "0",
-      courseDetails: { data: null },
       options: [],
       processedResults: null,
       dispersed: null,
@@ -65,36 +64,12 @@ export default {
     };
   },
   mounted() {
-    this.getCourseInfo();
     this.setList();
   },
   computed: {
-    ...mapState(["quarter", "results", "selected"])
+    ...mapState(["quarter", "results", "selected", "courseDetails"])
   },
   methods: {
-    getCourseInfo: async function() {
-      this.courseDetails.data = {};
-      await axios({
-        method: "post",
-        url: `/api/sche/getClassesByID?q=${this.quarter}`,
-        data: this.selected.map(s => s.replace(/\s*/g, ""))
-      })
-        .then(resp => {
-          resp.data.forEach(e => {
-            this.courseDetails.data[e.courseId.replace(/\s*/g, "")] = e;
-            const map = {};
-            e.classSections.forEach(s => (map[s.enrollCode] = s));
-            e.classSections = map;
-            this.$forceUpdate();
-          });
-        })
-        .catch(error => {
-          swal("ERROR", "Server Response Error", "error").then(() => {
-            this.$router.push({ name: "planner" });
-          });
-        });
-    },
-
     setList() {
       if (this.processedResults == null) this.processedResults = this.results;
       this.options = [];
@@ -123,13 +98,14 @@ export default {
         return;
       }
       this.dispersed = c;
-      const map = new Map();
+      const map = {};
       const ans = [];
       this.results.forEach(r => {
         let k = null;
         const key = r
-          .filter(cx => (cx.title != c.title ? true : !(k = cx)))
-          .map(cx => cx.enrollCode)
+          .filter(cx =>
+            this.code2id(cx) != this.code2id(c) ? true : !(k = cx)
+          )
           .sort();
         if (!map[key]) ans.push((map[key] = [...r]));
         map[key].push(k);
@@ -139,7 +115,7 @@ export default {
     },
 
     getPeriods(r) {
-      const s = { set: new Map(), list: [] };
+      const s = { set: {}, list: [] };
       const count = {};
       r.forEach(e => {
         const kl = [];
@@ -197,7 +173,7 @@ export default {
       let cot = 0;
       for (let c of this.result) {
         this.colorMap[c.title] =
-          this.dispersed && c.title == this.dispersed.title
+          this.dispersed && this.code2id(c) == this.code2id(this.dispersed)
             ? this.dispersedColor
             : this.colors[cot];
         cot++;
@@ -242,6 +218,10 @@ export default {
       if (min < 10) min = "0" + String(min);
       res += hour + ":" + min;
       return res;
+    },
+
+    code2id(code) {
+      return this.courseDetails.rev[code];
     }
   }
 };

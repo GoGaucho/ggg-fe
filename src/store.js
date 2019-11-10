@@ -3,7 +3,16 @@ import Vuex from 'vuex'
 
 Vue.use(Vuex)
 
-const init = (key, def) => ((a) => a ? def !== "" ? JSON.parse(a) : a : def)(localStorage.getItem(key));
+const init = (key, def) => {
+  const raw = localStorage.getItem(key);
+  if (!raw) return def;
+  if (key == "quarter") return raw;
+  const par = JSON.parse(raw);
+  const date = o => o.timerange = o.timerange.map(e => new Date(e));
+  if (key == "limit") date(par);
+  if (key == "events") par.forEach(x => date(x));
+  return par;
+};
 
 export default new Vuex.Store({
   state: {
@@ -19,6 +28,7 @@ export default new Vuex.Store({
     checkedEnrollCode: [],
     course: null,
     results: [],
+    courseDetails: { data: {}, map: {}, rev: {} }
   },
   mutations: {
     setQuarter(state, quarter) {
@@ -84,13 +94,27 @@ export default new Vuex.Store({
     },
 
     addResults(state, result) {
-      let copy = [];
-      for (let i of result) copy.push(i);
-      state.results.push(copy);
+      state.results.push([...result]);
     },
 
     clearResults(state) {
       state.results = [];
+    },
+
+    setCourseDetail(state, data) {
+      const detail = { data: {}, map: {}, rev: {}, s2c: {} };
+      data.forEach(e => {
+        const id = e.courseId.replace(/\s*/g, "");
+        detail.s2c[id] = {};
+        detail.data[id] = e;
+        e.classSections = e.classSections.map(s => {
+          detail.map[s.enrollCode] = s;
+          detail.rev[s.enrollCode] = id;
+          detail.s2c[id][+s.section] = s.enrollCode;
+          return s.enrollCode;
+        });
+      });
+      state.courseDetails = detail;
     },
 
     setCheckedEC(state, list) {

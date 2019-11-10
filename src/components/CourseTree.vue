@@ -72,21 +72,22 @@ export default {
 
     getCourseInfo: async function() {
       this.loading = true;
-      await axios({
-        method: "post",
-        url: `/api/sche/getClassesByID?q=${this.quarter}`,
-        data: this.selected.map(s => s.replace(/\s*/g, ""))
-      })
-        .then(resp => {
-          this.courses = resp.data;
-          this.getData();
-          this.loading = false;
-        })
-        .catch(error => {
-          console.log(error);
-          this.loading = false;
-          swal("ERROR", "Server Response Error", "error");
+      try {
+        const resp = await axios({
+          method: "post",
+          url: `/api/sche/getClassesByID?q=${this.quarter}`,
+          data: this.selected.map(s => s.replace(/\s*/g, ""))
         });
+        if (resp.data.length != this.selected.length)
+          throw new Error("data length mismatch");
+        this.courses = resp.data;
+        this.loading = false;
+        this.getData();
+      } catch (error) {
+        this.loading = false;
+        console.log(error);
+        swal("ERROR", "Server Response Error", "error");
+      }
     },
 
     setSelection(a, data) {

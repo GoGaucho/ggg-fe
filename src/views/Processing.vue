@@ -27,7 +27,11 @@
         type="primary"
         @click="$router.push({name: 'schedule'})"
       >View Schedule!</el-button>
-      <el-button type="danger" @click="$router.push({name: 'planner'})" style="margin: 10px;">Cancel</el-button>
+      <el-button
+        type="danger"
+        @click="calculating = false;$router.push({name: 'planner'})"
+        style="margin: 10px;"
+      >Cancel</el-button>
     </div>
   </div>
 </template>
@@ -37,12 +41,9 @@ import { mapState, mapMutations } from "vuex";
 
 const maxSolution = 999;
 const sleepTime = 100;
-const percentage = 0.8;
-const renderDelay = 20;
 const sleepDecay = 0.95;
 const sleepMin = 0.05;
 var sleepFactor = 1;
-var courseDetails = [];
 
 function sleep(ms) {
   const time = Math.round(ms * sleepFactor);
@@ -53,17 +54,15 @@ function sleep(ms) {
 
 function daytime2num(day, timeString) {
   if (timeString.Format) timeString = timeString.Format("HH:mm");
-  let dayNum = 1;
-  if (day == "M") dayNum = 1;
-  if (day == "T") dayNum = 2;
-  if (day == "W") dayNum = 3;
-  if (day == "R") dayNum = 4;
-  if (day == "F") dayNum = 5;
-  return (
-    (dayNum - 1) * 1440 +
-    Number(timeString.substr(0, 2) * 60) +
-    Number(timeString.substr(3, 2))
-  );
+  let dayNum = 0;
+  if (day == "T") dayNum = 1;
+  if (day == "W") dayNum = 2;
+  if (day == "R") dayNum = 3;
+  if (day == "F") dayNum = 4;
+  const h = +timeString.substr(0, 2);
+  const m = +timeString.substr(3, 2);
+
+  return dayNum * 168 + (h - 8) * 12 + m / 5;
 }
 
 function getCoursePeriods(lec, sec) {
@@ -72,26 +71,14 @@ function getCoursePeriods(lec, sec) {
   if (!lec.timeLocations.length) return [];
   for (let tl of lec.timeLocations) {
     days = tl.days.replace(/\s*/g, "");
-    for (let d of days) {
-      let period = {
-        location: tl.building + " - " + tl.room,
-        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)],
-        sec: lec.section
-      };
-      periods.push(period);
-    }
+    for (let d of days)
+      periods.push([daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]);
   }
   if (!sec || !sec.timeLocations.length) return periods;
   for (let tl of sec.timeLocations) {
     days = tl.days.replace(/\s*/g, "");
-    for (let d of days) {
-      let period = {
-        location: tl.building + " - " + tl.room,
-        range: [daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)],
-        sec: sec.section
-      };
-      periods.push(period);
-    }
+    for (let d of days)
+      periods.push([daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]);
   }
   return periods;
 }
@@ -105,7 +92,7 @@ export default {
       numSolution: 0,
       raw: null,
       chosen: [],
-      timegrid: new Uint16Array(451),
+      timegrid: new Uint16Array(53),
       colors: [
         "#fff1f0",
         "#f9f0ff",
@@ -120,7 +107,15 @@ export default {
     };
   },
   computed: {
-    ...mapState(["quarter", "selected", "events", "limit", "results"])
+    ...mapState([
+      "quarter",
+      "selected",
+      "events",
+      "limit",
+      "results",
+      "courseDetails",
+      "checkedEnrollCode"
+    ])
   },
   mounted() {
     this.process();
@@ -145,8 +140,8 @@ export default {
     getGrids(c) {
       const arr = [];
       var cont = false;
-      for (var r = 1; r <= 100; r++)
-        if (this.getTime(c * 1440 - 960 + Math.floor(7.8 * r))) {
+      for (var r = 0; r < 100; r++)
+        if (this.getTime((c - 1) * 168 + Math.floor(1.68 * r))) {
           if (!cont) {
             arr.push(r);
             cont = true;
@@ -155,23 +150,26 @@ export default {
 
       return arr;
     },
+
     blockStyle(r, c) {
       let x = r;
-      while (this.getTime(c * 1440 - 960 + Math.floor(7.8 * x))) x++;
+      while (this.getTime((c - 1) * 168 + Math.floor(1.68 * x))) x++;
 
       let res = "";
-      res += "top: " + (r - 1) + "%;";
+      res += "top: " + r + "%;";
       res += "left: " + 20 * (c - 1) + "%;";
       res += "background-color: " + this.color + ";";
       res += "height: " + (x - r) + "%";
       return res;
     },
-    ...mapMutations(["addResults", "clearResults"]),
+
+    ...mapMutations(["addResults", "clearResults", "setCourseDetail"]),
+
     process: async function() {
       this.tip = "Gathering Course Informations ...";
       await this.getCourseInfo();
       this.tip = "Wrapping Time Capsules ...";
-      await this.getPeriods();
+      this.getPeriods();
       this.tip = "Solving The Ultimate Problem of the Universe ...";
       this.initialize();
       this.calculating = true;
@@ -184,106 +182,81 @@ export default {
         this.tip = "There is no solution to your input, please click Cancel";
       }
     },
+
     getCourseInfo: async function() {
-      courseDetails = [];
-      await axios({
-        method: "post",
-        url: `/api/sche/getClassesByID?q=${this.quarter}`,
-        data: this.selected.map(s => s.replace(/\s*/g, ""))
-      })
-        .then(resp => {
-          courseDetails = resp.data;
-        })
-        .catch(error => {
-          swal("ERROR", "Server Response Error", "error").then(() => {
-            this.$router.push({ name: "planner" });
-          });
+      let temp = null;
+      try {
+        const resp = await axios({
+          method: "post",
+          url: `/api/sche/getClassesByID?q=${this.quarter}`,
+          data: this.selected.map(s => s.replace(/\s*/g, ""))
         });
+        if (resp.data.length != this.selected.length)
+          throw new Error("data length mismatch");
+        this.setCourseDetail(resp.data);
+      } catch (error) {
+        swal("ERROR", "Server Response Error", "error").then(() => {
+          this.$router.push({ name: "planner" });
+        });
+      }
     },
-    getPeriods: async function() {
+
+    getPeriods: function() {
       this.raw = {
         courses: [],
         events: [],
-        break: this.limit.break,
+        break: this.limit.break / 5,
         begin: daytime2num("", this.limit.timerange[0]),
         end: daytime2num("", this.limit.timerange[1])
       };
-      for (let c of courseDetails) {
-        let course = [];
-        let title = c.courseId.replace(/\s*/g, "");
-        let sectionMap = [];
-        for (let s of c.classSections) {
-          // here add skip conditions
-          if (s.section % 100 == 0) {
-            sectionMap[Number(s.section)] = { lecture: s, sections: [] };
-          } else if (sectionMap[s.section - (s.section % 100)]) {
-            sectionMap[s.section - (s.section % 100)].sections.push(s);
+      for (let id of this.selected) {
+        const map = { list: [], data: {} };
+        for (let code of this.courseDetails.data[id].classSections) {
+          const sec = this.courseDetails.map[code];
+          if (sec.section % 100 == 0) {
+            map.list.push(+sec.section);
+            map.data[+sec.section] = { code: code, sections: [] };
+          } else {
+            const lec = sec.section - (sec.section % 100);
+            map.data[lec].sections.push(code);
           }
         }
-        for (let s of c.classSections) {
-          if (s.section % 100 != 0) continue;
-          let l = sectionMap[Number(s.section)];
-          // skip condition for lecture
-          if (l.classClosed || l.courseCancelled) continue;
-          if (l.enrolledTotal >= l.maxEnroll) continue;
-          if (!l.sections.length) {
+        const course = [];
+        for (let sect of map.list) {
+          const lec = map.data[sect];
+          const lecData = this.courseDetails.map[lec.code];
+          if (!lec.sections.length)
             course.push({
-              title: title,
-              space: l.lecture.maxEnroll - l.lecture.enrolledTotal,
-              enrollCode: String(l.lecture.enrollCode),
-              periods: getCoursePeriods(l.lecture, null)
+              enrollCode: lec.code,
+              periods: getCoursePeriods(lecData, null)
             });
-          }
-          for (let ss of l.sections) {
-            // skip condition for sections
-            if (ss.classClosed || ss.courseCancelled) continue;
-            if (ss.enrolledTotal >= ss.maxEnroll) continue;
-            course.push({
-              title: title,
-              space: Math.min(
-                l.lecture.maxEnroll - l.lecture.enrolledTotal,
-                ss.maxEnroll - ss.enrolledTotal
-              ),
-              enrollCode:
-                String(l.lecture.enrollCode) + ", " + String(ss.enrollCode),
-              periods: getCoursePeriods(l.lecture, ss)
+          else
+            lec.sections.forEach(sec => {
+              const secData = this.courseDetails.map[sec];
+              course.push({
+                enrollCode: sec,
+                periods: getCoursePeriods(lecData, secData)
+              });
             });
-          }
         }
-        course.sort((a, b) => {
-          return b.space - a.space;
-        });
         this.raw.courses.push(course);
       }
-
-      for (let e of this.events) {
-        let eventPeriod = {
-          title: e.name,
-          duration: e.duration,
-          periods: []
-        };
-        let begin = e.timerange[0].Format("HH:mm");
-        let end = e.timerange[1].Format("HH:mm");
-        for (let d of e.days) {
-          eventPeriod.periods.push({
-            range: [daytime2num(d, begin), daytime2num(d, end)]
-          });
-        }
-        this.raw.events.push(eventPeriod);
-      }
+      this.raw.events = this.events.map(e => ({
+        title: e.name,
+        duration: e.duration / 5,
+        periods: e.days.map(d => e.timerange.map(r => daytime2num(d, r)))
+      }));
     },
+
     initialize: function() {
       this.chosen = [];
       this.clearResults();
       this.numSolution = 0;
     },
+
     dfs: async function(I) {
       if (!this.calculating) return;
       if (this.results.length > maxSolution) return; // prevent over calculate
-      if (Math.random() > percentage) {
-        await sleep(renderDelay);
-        await this.$forceUpdate();
-      }
       if (!this.raw.courses[I]) {
         // success for one solution
         this.numSolution++;
@@ -298,46 +271,42 @@ export default {
           this.erase(choice.periods);
           continue;
         }
-        this.chosen.push(choice);
+        this.chosen.push(choice.enrollCode);
         await this.dfs(I + 1);
         this.erase(choice.periods);
-        this.chosen.splice(I, 1);
+        this.chosen.pop();
       }
       return;
     },
+
     checkAdd: function(periods) {
-      for (let period of periods) {
-        let begin = period.range[0];
-        let end = period.range[1];
-        if (this.getTimeAnd(begin, end + 1)) return false;
-      }
-      for (let period of periods) {
-        let begin = period.range[0];
-        let end = period.range[1];
-        this.fillTimeBlock(begin, end + 1, true);
-      }
+      for (let period of periods)
+        if (this.getTimeAnd(period[0], period[1])) return false;
+
+      for (let period of periods)
+        this.fillTimeBlock(period[0], period[1], true);
+
       return true;
     },
+
     checkEvents: function() {
       for (let e of this.raw.events) {
         for (let p of e.periods) {
           let space = 0;
-          for (let i = p.range[0]; i <= p.range[1]; i++) {
+          for (let i = p[0]; i < p[1]; i++) {
             if (!this.getTime(i)) {
-              space++;
-              if (space >= e.duration) break;
+              if (++space >= e.duration) break;
             } else space = 0;
           }
-          if (space >= e.duration) continue;
-          else return false;
+          if (space < e.duration) return false;
         }
       }
       return true;
     },
     checkLimit: function() {
       let space = 0;
-      for (let i = 0; i <= 7200; i++) {
-        let daytime = i % 1440;
+      for (let i = 0; i < 840; i++) {
+        let daytime = i % 168;
         // check time range
         if (
           this.getTime(i) &&
@@ -353,12 +322,10 @@ export default {
       }
       return true;
     },
+
     erase: function(periods) {
-      for (let period of periods) {
-        let begin = period.range[0];
-        let end = period.range[1];
-        this.fillTimeBlock(begin, end + 1, false);
-      }
+      for (let period of periods)
+        this.fillTimeBlock(period[0], period[1], false);
     }
   }
 };
