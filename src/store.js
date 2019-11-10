@@ -102,19 +102,7 @@ export default new Vuex.Store({
     },
 
     setCourseDetail(state, data) {
-      const detail = { data: {}, map: {}, rev: {}, s2c: {} };
-      data.forEach(e => {
-        const id = e.courseId.replace(/\s*/g, "");
-        detail.s2c[id] = {};
-        detail.data[id] = e;
-        e.classSections = e.classSections.map(s => {
-          detail.map[s.enrollCode] = s;
-          detail.rev[s.enrollCode] = id;
-          detail.s2c[id][+s.section] = s.enrollCode;
-          return s.enrollCode;
-        });
-      });
-      state.courseDetails = detail;
+      state.courseDetails = data;
     },
 
     setCheckedEC(state, list) {

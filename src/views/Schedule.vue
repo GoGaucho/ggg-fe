@@ -6,7 +6,7 @@
         <el-button @click="$router.push({name: 'planner'})">Back</el-button>
       </div>
       <div class="row">
-        <p v-if="dispersed" style="margin-right: 10px;">group results for: {{dispersed.title}}</p>
+        <p v-if="dispersed" style="margin-right: 10px;">group results for: {{dispersed}}</p>
         <el-button-group style="margin-right: 10px;">
           <el-button @click="choose(Number(I)-1)" size="small" icon="el-icon-arrow-left"></el-button>
           <el-button @click="choose(Number(I)+1)" size="small" icon="el-icon-arrow-right"></el-button>
@@ -23,12 +23,12 @@
           <div class="tooltip" slot="content">
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
-          <div class="card" :style="cardStyle(c.c.title, c.p.range)" @click="disperse(c.c)">
-            {{c.c.title}}
+          <div class="card" :style="cardStyle(c.id, c.p)" @click="disperse(c.id)">
+            {{c.id}}
             <br />
-            {{range2time(c.p.range)}}
+            {{range2time(c.p)}}
             <br />
-            {{c.c.location}}
+            {{c.loc}}
           </div>
         </el-tooltip>
       </template>
@@ -103,9 +103,7 @@ export default {
       this.results.forEach(r => {
         let k = null;
         const key = r
-          .filter(cx =>
-            this.code2id(cx) != this.code2id(c) ? true : !(k = cx)
-          )
+          .filter(cx => (this.code2id(cx) != c ? true : !(k = cx)))
           .sort();
         if (!map[key]) ans.push((map[key] = [...r]));
         map[key].push(k);
@@ -119,48 +117,37 @@ export default {
       const count = {};
       r.forEach(e => {
         const kl = [];
-        e.periods.forEach(p => {
-          const key = p.range.toString();
+        const id = this.courseDetails.rev[e];
+        this.courseDetails.periods[e].forEach(p => {
+          const key = p.toString();
           if (!s.set[key]) {
             kl.push(key);
-            if (!count[e.title]) count[e.title] = 0;
-            count[e.title]++;
-            const dat = {
-              c: e,
-              p: p,
-              ec: [e.enrollCode],
-              key: `${e.title}-${count[e.title]}`
-            };
+            if (!count[id]) count[id] = 0;
+            count[id]++;
+            const dat = { id: id, p: p, cs: [e], key: `${id}-${count[id]}` };
             s.set[key] = dat;
             s.list.push(dat);
-          } else s.set[key].ec.push(e.enrollCode);
+          } else s.set[key].cs.push(e);
         });
       });
       s.list.forEach(e => {
-        e.ec = e.ec.length > 1 ? ` (${e.ec.length} code)` : " - " + e.ec[0];
+        e.code = e.cs.length > 1 ? ` (${e.cs.length} code)` : " - " + e.cs[0];
       });
 
       return s.list;
     },
 
     getToolTip(c) {
-      let ans = [c.c.title + c.ec, this.range2time(c.p.range), c.p.location];
+      let ans = [c.id + c.code, this.range2time(c.p), c.loc];
       try {
-        const cla = this.courseDetails.data[c.c.title];
-        if ((this.dispersed && this.dispersed.title == c.c.title) || !cla)
-          return ans;
-        const enrs = c.c.enrollCode.split(", ");
-        const enr = enrs.reduce(
-          (s, e) => (cla.classSections[e].section == c.p.sec ? e : s),
-          null
-        );
-        const sec = cla.classSections[enr];
+        if (this.dispersed == c.id) return ans;
+        const sec = this.courseDetails.map[c.cs[0]];
         const ins = sec.instructors.map(e => e.instructor);
         if (ins.length <= 1)
           ans.push("Instructor: " + (ins[0] ? ins[0] : "T.B.A"));
-        else if (ins.length > 1) {
+        else {
           ans.push("Instructors: ");
-          ins.forEach(e => ans.push(e));
+          ans = ans.concat(ins);
         }
       } catch (e) {
         console.log(e);
@@ -172,8 +159,8 @@ export default {
     addColor: function() {
       let cot = 0;
       for (let c of this.result) {
-        this.colorMap[c.title] =
-          this.dispersed && this.code2id(c) == this.code2id(this.dispersed)
+        this.colorMap[this.code2id(c)] =
+          this.dispersed && this.code2id(c) == this.dispersed
             ? this.dispersedColor
             : this.colors[cot];
         cot++;
@@ -191,33 +178,26 @@ export default {
 
     cardStyle: function(title, range) {
       let res = "";
-      let day = Math.floor(range[0] / 1440) + 1;
-      let begin = range[0] % 1440;
-      let end = range[1] % 1440;
-      res += "height: " + 0.119 * (end - begin) + "%;";
-      res += "top: " + 0.119 * (begin - 420) + "%;";
+      let day = Math.floor(range[0] / 168) + 1;
+      let begin = range[0] % 168;
+      let end = range[1] % 168;
+      res += "height: " + (100 / 168) * (end - begin) + "%;";
+      res += "top: " + (10 + (100 / 168) * begin) + "%;";
       res += "left: " + 20 * (day - 1) + "%;";
       res += "background-color: " + this.colorMap[title] + ";";
       return res;
     },
 
     range2time: function(range) {
-      let res = "";
-      let timenum = range[0];
-      timenum %= 1440;
-      let hour = Math.floor(timenum / 60);
-      let min = timenum % 60;
-      if (hour < 10) hour = "0" + String(hour);
-      if (min < 10) min = "0" + String(min);
-      res += hour + ":" + min;
-      timenum = range[1] % 1440;
-      res += " - ";
-      hour = Math.floor(timenum / 60);
-      min = timenum % 60;
-      if (hour < 10) hour = "0" + String(hour);
-      if (min < 10) min = "0" + String(min);
-      res += hour + ":" + min;
-      return res;
+      const mapper = t => {
+        const timenum = t % 168;
+        let hour = Math.floor(timenum / 12) + 8;
+        let min = (timenum % 12) * 5;
+        if (hour < 10) hour = `0${hour}`;
+        if (min < 10) min = `0${min}`;
+        return `${hour}:${min}`;
+      };
+      return range.map(e => mapper(e)).join(" - ");
     },
 
     code2id(code) {

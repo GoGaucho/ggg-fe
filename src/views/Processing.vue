@@ -183,25 +183,24 @@ export default {
       }
     },
 
-    getCourseInfo: async function() {
-      let temp = null;
-      try {
-        const resp = await axios({
-          method: "post",
-          url: `/api/sche/getClassesByID?q=${this.quarter}`,
-          data: this.selected.map(s => s.replace(/\s*/g, ""))
-        });
-        if (resp.data.length != this.selected.length)
-          throw new Error("data length mismatch");
-        this.setCourseDetail(resp.data);
-      } catch (error) {
-        swal("ERROR", "Server Response Error", "error").then(() => {
-          this.$router.push({ name: "planner" });
-        });
-      }
-    },
+    constructTree() {},
 
-    getPeriods: function() {
+    mapCourseDetail(data) {
+      const detail = { data: {}, map: {}, rev: {}, s2c: {}, periods: {} };
+
+      // course detail
+      data.forEach(e => {
+        const id = e.courseId.replace(/\s*/g, "");
+        detail.s2c[id] = {};
+        detail.data[id] = e;
+        e.classSections = e.classSections.map(s => {
+          detail.map[s.enrollCode] = s;
+          detail.rev[s.enrollCode] = id;
+          return s.enrollCode;
+        });
+      });
+
+      // raw
       this.raw = {
         courses: [],
         events: [],
@@ -209,10 +208,12 @@ export default {
         begin: daytime2num("", this.limit.timerange[0]),
         end: daytime2num("", this.limit.timerange[1])
       };
+
+      // courses
       for (let id of this.selected) {
         const map = { list: [], data: {} };
-        for (let code of this.courseDetails.data[id].classSections) {
-          const sec = this.courseDetails.map[code];
+        for (let code of detail.data[id].classSections) {
+          const sec = detail.map[code];
           if (sec.section % 100 == 0) {
             map.list.push(+sec.section);
             map.data[+sec.section] = { code: code, sections: [] };
@@ -224,29 +225,53 @@ export default {
         const course = [];
         for (let sect of map.list) {
           const lec = map.data[sect];
-          const lecData = this.courseDetails.map[lec.code];
-          if (!lec.sections.length)
-            course.push({
-              enrollCode: lec.code,
-              periods: getCoursePeriods(lecData, null)
-            });
-          else
+          const lecData = detail.map[lec.code];
+          if (!lec.sections.length) {
+            const p = getCoursePeriods(lecData, null);
+            detail.periods[lec.code] = p;
+            course.push({ enrollCode: lec.code, periods: p });
+          } else {
+            detail.s2c[id][sect] = lec.code;
             lec.sections.forEach(sec => {
-              const secData = this.courseDetails.map[sec];
-              course.push({
-                enrollCode: sec,
-                periods: getCoursePeriods(lecData, secData)
-              });
+              const secData = detail.map[sec];
+              const p = getCoursePeriods(lecData, secData);
+              detail.periods[sec] = p;
+              course.push({ enrollCode: sec, periods: p });
             });
+          }
         }
         this.raw.courses.push(course);
       }
+
+      this.setCourseDetail(detail);
+
+      // events
       this.raw.events = this.events.map(e => ({
         title: e.name,
         duration: e.duration / 5,
         periods: e.days.map(d => e.timerange.map(r => daytime2num(d, r)))
       }));
     },
+
+    getCourseInfo: async function() {
+      let temp = null;
+      try {
+        const resp = await axios({
+          method: "post",
+          url: `/api/sche/getClassesByID?q=${this.quarter}`,
+          data: this.selected.map(s => s.replace(/\s*/g, ""))
+        });
+        if (resp.data.length != this.selected.length)
+          throw new Error("data length mismatch");
+        this.mapCourseDetail(resp.data);
+      } catch (error) {
+        swal("ERROR", "Server Response Error", "error").then(() => {
+          this.$router.push({ name: "planner" });
+        });
+      }
+    },
+
+    getPeriods: function() {},
 
     initialize: function() {
       this.chosen = [];
