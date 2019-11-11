@@ -3,8 +3,8 @@
     <SelectedList />
     <div>
       <CourseTree />
-      <Events />
       <TimeLimit />
+      <Events />
     </div>
   </div>
 </template>

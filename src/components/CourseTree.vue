@@ -1,24 +1,29 @@
 <template>
   <div class="course-tree">
+    <h1>Section Inclusion and Exclusion</h1>
+    <p>Cancelled / closed / full sections and lectures are excluded by default</p>
+    <p>Each course should have at least one lecture / section included</p>
+    <br />
     <div v-if="loading">Loading...</div>
     <el-tree
       :data="res"
       v-if="res.length"
-      style="width: 100%;"
+      style="width: 100%;text-align: left"
       node-key="enrollCode"
       :default-checked-keys="checkList"
+      default-expand-all
       @check="setSelection"
-      accordion
       show-checkbox
     >
       <template slot-scope="scope">
-        {{scope.data.enrollCode}}
-        {{scope.data.count}}
-        {{scope.data.space}}
-        {{scope.data.days}}
-        {{scope.data.time}}
-        {{scope.data.location}}
-        {{scope.data.instructor}}
+        <div class="treerow" style="width:100%">
+          <div class="treecell" style="width:22%">{{scope.data.enrollCode}}</div>
+          <div class="treecell" style="width:9%;left:22%">{{scope.data.days}}</div>
+          <div class="treecell" style="width:19%;left:31%">{{scope.data.time}}</div>
+          <div class="treecell" style="width:20%;left:50%">{{scope.data.location}}</div>
+          <div class="treecell" style="width:25%;left:70%">{{scope.data.instructor}}</div>
+          <div class="treecell" style="width:5%;left:95%">{{scope.data.space}}</div>
+        </div>
       </template>
     </el-tree>
   </div>
@@ -148,6 +153,8 @@ export default {
             ss.days = ss.days.replace(/null/g, "T.B.A.");
             ss.time = ss.time.replace(/null/g, "T.B.A.");
             ss.location = ss.location.replace(/null/g, "T.B.A.");
+
+            ss.days = ss.days.replace(/\s*/g, "");
           }
 
           if (s.section % 100 == 0) {
@@ -186,14 +193,41 @@ export default {
 
 <style scoped>
 div.course-tree {
+  position: relative;
+  width: 60%;
+  max-width: 900px;
+  min-width: 630px;
   padding: 10px 20px;
-  margin: 20px 0;
+  margin: 20px;
   border-radius: 5px;
   box-shadow: 2px 2px 5px #999;
   background-color: #fff;
 }
 
+h1,
+h3,
+h5 {
+  text-align: left;
+  color: #036;
+}
+
+p {
+  text-align: left;
+  margin: 0;
+}
+
 div.row {
   display: flex;
+}
+</style>
+
+<style>
+div.el-tree-node__content {
+  align-items: stretch;
+}
+
+div.treecell {
+  display: inline;
+  position: absolute;
 }
 </style>
