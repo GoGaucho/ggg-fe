@@ -39,6 +39,13 @@
 <script>
 import { mapState, mapMutations } from "vuex";
 
+const minblock = 5;
+const daystart = 8;
+const dayend = 23;
+const daymin = ((dayend - daystart) * 60) / minblock;
+const totlen = daymin * minblock;
+const arrlen = Math.ceil(totlen / 16);
+
 const maxSolution = 999;
 const sleepTime = 100;
 const sleepDecay = 0.95;
@@ -62,24 +69,29 @@ function daytime2num(day, timeString) {
   const h = +timeString.substr(0, 2);
   const m = +timeString.substr(3, 2);
 
-  return dayNum * 168 + (h - 8) * 12 + m / 5;
+  return dayNum * daymin + ((h - daystart) * 60 + m) / minblock;
 }
 
 function getCoursePeriods(lec, sec) {
-  let periods = [];
-  let days = [];
+  const periods = [];
+
+  const adder = tls => {
+    for (let tl of tls.timeLocations) {
+      const days = tl.days.replace(/\s*/g, "");
+      const loc = `${tl.building} - ${tl.room}`;
+      for (let d of days)
+        periods.push([
+          daytime2num(d, tl.beginTime),
+          daytime2num(d, tl.endTime),
+          loc
+        ]);
+    }
+  };
+
   if (!lec.timeLocations.length) return [];
-  for (let tl of lec.timeLocations) {
-    days = tl.days.replace(/\s*/g, "");
-    for (let d of days)
-      periods.push([daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]);
-  }
+  adder(lec);
   if (!sec || !sec.timeLocations.length) return periods;
-  for (let tl of sec.timeLocations) {
-    days = tl.days.replace(/\s*/g, "");
-    for (let d of days)
-      periods.push([daytime2num(d, tl.beginTime), daytime2num(d, tl.endTime)]);
-  }
+  adder(sec);
   return periods;
 }
 
@@ -92,7 +104,7 @@ export default {
       numSolution: 0,
       raw: null,
       chosen: [],
-      timegrid: new Uint16Array(53),
+      timegrid: new Uint16Array(arrlen),
       colors: [
         "#fff1f0",
         "#f9f0ff",
@@ -141,7 +153,7 @@ export default {
       const arr = [];
       var cont = false;
       for (var r = 0; r < 100; r++)
-        if (this.getTime((c - 1) * 168 + Math.floor(1.68 * r))) {
+        if (this.getTime((c - 1) * daymin + Math.floor((daymin / 100) * r))) {
           if (!cont) {
             arr.push(r);
             cont = true;
@@ -153,7 +165,8 @@ export default {
 
     blockStyle(r, c) {
       let x = r;
-      while (this.getTime((c - 1) * 168 + Math.floor(1.68 * x))) x++;
+      while (this.getTime((c - 1) * daymin + Math.floor((daymin / 100) * x)))
+        x++;
 
       let res = "";
       res += "top: " + r + "%;";
@@ -168,8 +181,6 @@ export default {
     process: async function() {
       this.tip = "Gathering Course Informations ...";
       await this.getCourseInfo();
-      this.tip = "Wrapping Time Capsules ...";
-      this.getPeriods();
       this.tip = "Solving The Ultimate Problem of the Universe ...";
       this.initialize();
       this.calculating = true;
@@ -182,8 +193,6 @@ export default {
         this.tip = "There is no solution to your input, please click Cancel";
       }
     },
-
-    constructTree() {},
 
     mapCourseDetail(data) {
       const detail = { data: {}, map: {}, rev: {}, s2c: {}, periods: {} };
@@ -204,7 +213,7 @@ export default {
       this.raw = {
         courses: [],
         events: [],
-        break: this.limit.break / 5,
+        break: this.limit.break / minblock,
         begin: daytime2num("", this.limit.timerange[0]),
         end: daytime2num("", this.limit.timerange[1])
       };
@@ -229,14 +238,16 @@ export default {
           if (!lec.sections.length) {
             const p = getCoursePeriods(lecData, null);
             detail.periods[lec.code] = p;
-            course.push({ enrollCode: lec.code, periods: p });
+            if (this.checkedEnrollCode.indexOf(lec.code) >= 0)
+              course.push({ enrollCode: lec.code, periods: p });
           } else {
             detail.s2c[id][sect] = lec.code;
             lec.sections.forEach(sec => {
               const secData = detail.map[sec];
               const p = getCoursePeriods(lecData, secData);
               detail.periods[sec] = p;
-              course.push({ enrollCode: sec, periods: p });
+              if (this.checkedEnrollCode.indexOf(sec) >= 0)
+                course.push({ enrollCode: sec, periods: p });
             });
           }
         }
@@ -248,7 +259,7 @@ export default {
       // events
       this.raw.events = this.events.map(e => ({
         title: e.name,
-        duration: e.duration / 5,
+        duration: e.duration / minblock,
         periods: e.days.map(d => e.timerange.map(r => daytime2num(d, r)))
       }));
     },
@@ -265,13 +276,12 @@ export default {
           throw new Error("data length mismatch");
         this.mapCourseDetail(resp.data);
       } catch (error) {
+        console.log(error);
         swal("ERROR", "Server Response Error", "error").then(() => {
           this.$router.push({ name: "planner" });
         });
       }
     },
-
-    getPeriods: function() {},
 
     initialize: function() {
       this.chosen = [];
@@ -328,10 +338,11 @@ export default {
       }
       return true;
     },
+
     checkLimit: function() {
       let space = 0;
-      for (let i = 0; i < 840; i++) {
-        let daytime = i % 168;
+      for (let i = 0; i < totlen; i++) {
+        let daytime = i % daymin;
         // check time range
         if (
           this.getTime(i) &&

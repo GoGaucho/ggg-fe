@@ -15,7 +15,6 @@
         {{scope.data.enrollCode}}
         {{scope.data.count}}
         {{scope.data.space}}
-        {{scope.data.max}}
         {{scope.data.days}}
         {{scope.data.time}}
         {{scope.data.location}}

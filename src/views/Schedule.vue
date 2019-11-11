@@ -8,8 +8,8 @@
       <div class="row">
         <p v-if="dispersed" style="margin-right: 10px;">group results for: {{dispersed}}</p>
         <el-button-group style="margin-right: 10px;">
-          <el-button @click="choose(Number(I)-1)" size="small" icon="el-icon-arrow-left"></el-button>
-          <el-button @click="choose(Number(I)+1)" size="small" icon="el-icon-arrow-right"></el-button>
+          <el-button @click="choose(+I-1)" size="small" icon="el-icon-arrow-left"></el-button>
+          <el-button @click="choose(+I+1)" size="small" icon="el-icon-arrow-right"></el-button>
         </el-button-group>
         <el-select filterable @change="choose" v-model="I">
           <el-option v-for="o in options" :value="o.key" :label="o.label" v-bind:key="o.key" />
@@ -24,11 +24,11 @@
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
           <div class="card" :style="cardStyle(c.id, c.p)" @click="disperse(c.id)">
-            {{c.id}}
+            {{c.id + c.code}}
             <br />
             {{range2time(c.p)}}
             <br />
-            {{c.loc}}
+            {{c.p[2]}}
           </div>
         </el-tooltip>
       </template>
@@ -38,6 +38,12 @@
 
 <script>
 import { mapState } from "vuex";
+
+const minblock = 5;
+const daystart = 8;
+const dayend = 23;
+const daymin = ((dayend - daystart) * 60) / minblock;
+const totlen = daymin * minblock;
 
 export default {
   name: "Schedule",
@@ -119,7 +125,7 @@ export default {
         const kl = [];
         const id = this.courseDetails.rev[e];
         this.courseDetails.periods[e].forEach(p => {
-          const key = p.toString();
+          const key = `${p[0]}-${p[1]}`;
           if (!s.set[key]) {
             kl.push(key);
             if (!count[id]) count[id] = 0;
@@ -127,7 +133,10 @@ export default {
             const dat = { id: id, p: p, cs: [e], key: `${id}-${count[id]}` };
             s.set[key] = dat;
             s.list.push(dat);
-          } else s.set[key].cs.push(e);
+          } else {
+            s.set[key].cs.push(e);
+            s.set[key].p = [s.set[key].p[0], s.set[key].p[1]];
+          }
         });
       });
       s.list.forEach(e => {
@@ -138,9 +147,9 @@ export default {
     },
 
     getToolTip(c) {
-      let ans = [c.id + c.code, this.range2time(c.p), c.loc];
+      let ans = [c.id + c.code, this.range2time(c.p), c.p[2]];
       try {
-        if (this.dispersed == c.id) return ans;
+        if (c.cs.length > 1) return ans;
         const sec = this.courseDetails.map[c.cs[0]];
         const ins = sec.instructors.map(e => e.instructor);
         if (ins.length <= 1)
@@ -178,11 +187,11 @@ export default {
 
     cardStyle: function(title, range) {
       let res = "";
-      let day = Math.floor(range[0] / 168) + 1;
-      let begin = range[0] % 168;
-      let end = range[1] % 168;
-      res += "height: " + (100 / 168) * (end - begin) + "%;";
-      res += "top: " + (10 + (100 / 168) * begin) + "%;";
+      let day = Math.floor(range[0] / daymin) + 1;
+      let begin = range[0] % daymin;
+      let end = range[1] % daymin;
+      res += "height: " + (100 / daymin) * (end - begin) + "%;";
+      res += "top: " + (10 + (100 / daymin) * begin) + "%;";
       res += "left: " + 20 * (day - 1) + "%;";
       res += "background-color: " + this.colorMap[title] + ";";
       return res;
@@ -190,14 +199,14 @@ export default {
 
     range2time: function(range) {
       const mapper = t => {
-        const timenum = t % 168;
+        const timenum = t % daymin;
         let hour = Math.floor(timenum / 12) + 8;
         let min = (timenum % 12) * 5;
         if (hour < 10) hour = `0${hour}`;
         if (min < 10) min = `0${min}`;
         return `${hour}:${min}`;
       };
-      return range.map(e => mapper(e)).join(" - ");
+      return `${mapper(range[0])} - ${mapper(range[1])}`;
     },
 
     code2id(code) {
