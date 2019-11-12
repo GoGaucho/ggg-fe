@@ -11,8 +11,8 @@
       style="width: 100%;text-align: left"
       node-key="enrollCode"
       :default-checked-keys="checkList"
-      default-expand-all
       @check="setSelection"
+      ref="tree"
       show-checkbox
     >
       <template slot-scope="scope">
@@ -48,7 +48,6 @@ export default {
   },
   watch: {
     selected: function() {
-      console.log("changed");
       let removed = null;
       this.res = this.res.filter(c => {
         const ans = this.selected.indexOf(c.courseId) >= 0;
@@ -95,22 +94,35 @@ export default {
     },
 
     setSelection(a, data) {
+      this.saveSelection(data.checkedKeys, data.halfCheckedKeys);
+    },
+
+    saveSelection(c, hc) {
       const filt = e => e.length == 5;
-      const c0 = data.checkedKeys.filter(filt);
+      const c0 = c.filter(filt);
       this.checkList = c0;
-      const c1 = data.halfCheckedKeys.filter(filt);
+      const c1 = hc.filter(filt);
       this.setCheckedEC([...c0, ...c1]);
     },
 
     getData: function() {
       const list = [];
+      const ce = [];
       const check = l => {
+        let bool = false;
         l.forEach(ss => {
           if (!ss.children || !ss.children.length) {
-            if (!ss.disables && ss.space > 0)
+            if (!ss.disables && ss.space > 0) {
+              bool = true;
+              ce.push(ss.enrollCode);
               this.checkList.push(ss.enrollCode);
-          } else check(ss.children);
+            }
+          } else {
+            bool = check(ss.children);
+            if (bool) ce.push(ss.enrollCode);
+          }
         });
+        return bool;
       };
 
       for (let c of this.courses) {
@@ -176,6 +188,7 @@ export default {
         });
       }
       this.res = list;
+      this.setCheckedEC(ce);
     },
 
     getStatus(s) {

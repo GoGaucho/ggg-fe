@@ -19,7 +19,7 @@
     <div class="table">
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
       <template v-for="c in getPeriods(result)">
-        <el-tooltip v-bind:key="c.key" effect="light">
+        <el-tooltip v-bind:key="c.key" effect="light" open-delay="300">
           <div class="tooltip" slot="content">
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
@@ -112,7 +112,7 @@ export default {
           .filter(cx => (this.code2id(cx) != c ? true : !(k = cx)))
           .sort();
         if (!map[key]) ans.push((map[key] = [...r]));
-        map[key].push(k);
+        if (map[key].indexOf(k) < 0) map[key].push(k);
       });
       this.processedResults = ans;
       this.setList();
@@ -187,11 +187,11 @@ export default {
 
     cardStyle: function(title, range) {
       let res = "";
-      let day = Math.floor(range[0] / daymin) + 1;
-      let begin = range[0] % daymin;
-      let end = range[1] % daymin;
-      res += "height: " + (100 / daymin) * (end - begin) + "%;";
-      res += "top: " + (10 + (100 / daymin) * begin) + "%;";
+      let day = Math.floor(range[0] / 1440) + 1;
+      let begin = range[0] % 1440;
+      let end = range[1] % 1440;
+      res += "height: " + (100 / (1440 - 480)) * (end - begin) + "%;";
+      res += "top: " + (10 + (100 / (1440 - 480)) * (begin - 480)) + "%;";
       res += "left: " + 20 * (day - 1) + "%;";
       res += "background-color: " + this.colorMap[title] + ";";
       return res;
@@ -199,9 +199,9 @@ export default {
 
     range2time: function(range) {
       const mapper = t => {
-        const timenum = t % daymin;
-        let hour = Math.floor(timenum / 12) + 8;
-        let min = (timenum % 12) * 5;
+        const timenum = t % 1440;
+        let hour = Math.floor(timenum / 60);
+        let min = timenum % 60;
         if (hour < 10) hour = `0${hour}`;
         if (min < 10) min = `0${min}`;
         return `${hour}:${min}`;

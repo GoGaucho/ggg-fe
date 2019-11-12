@@ -1,14 +1,12 @@
 <template>
   <div class="processing">
     <div class="grid">
-      <template v-for="c of 5">
-        <div
-          v-for="r in getGrids(c)"
-          v-bind:key="`${c}-${r}`"
-          class="block"
-          :style="blockStyle(r, c)"
-        >&nbsp;</div>
-      </template>
+      <div
+        v-for="r in getGrids()"
+        v-bind:key="r.toString()"
+        class="block"
+        :style="blockStyle(r)"
+      >&nbsp;</div>
     </div>
     <div class="content">
       <h1>Processing</h1>
@@ -38,25 +36,33 @@
 
 <script>
 import { mapState, mapMutations } from "vuex";
+import { timeout } from "q";
 
-const minblock = 5;
-const daystart = 8;
-const dayend = 23;
-const daymin = ((dayend - daystart) * 60) / minblock;
-const totlen = daymin * minblock;
-const arrlen = Math.ceil(totlen / 16);
+const maxSolution = 9999;
+const pauseItv = 50;
+const delay = 10;
 
-const maxSolution = 999;
-const sleepTime = 100;
-const sleepDecay = 0.95;
-const sleepMin = 0.05;
-var sleepFactor = 1;
+let skipper = 10;
+let lastTime = 0;
 
-function sleep(ms) {
-  const time = Math.round(ms * sleepFactor);
-  sleepFactor *= sleepDecay;
-  if (sleepFactor < sleepMin) sleepFactor = sleepMin;
-  return new Promise(resolve => setTimeout(resolve, ms));
+let timegrid = null;
+let timeset = [0, 7200];
+
+function getTime(a) {
+  return timegrid[a >> 4] & (1 << (a & 0xf));
+}
+
+function getTimeAnd(ps) {
+  for (let p of ps)
+    for (var i = p[0]; i < p[1]; i++) if (getTime(i)) return true;
+  return false;
+}
+
+function fillTimeBlock(ps, v) {
+  for (let p of ps)
+    for (var i = p[0]; i < p[1]; i++)
+      if (v) timegrid[i >> 4] |= 1 << (i & 0xf);
+      else timegrid[i >> 4] &= 0xffff - (1 << (i & 0xf));
 }
 
 function daytime2num(day, timeString) {
@@ -68,8 +74,9 @@ function daytime2num(day, timeString) {
   if (day == "F") dayNum = 4;
   const h = +timeString.substr(0, 2);
   const m = +timeString.substr(3, 2);
-
-  return dayNum * daymin + ((h - daystart) * 60 + m) / minblock;
+  const ans = (dayNum * 24 + h) * 60 + m;
+  if (timeset.indexOf(ans) < 0) timeset.push(ans);
+  return ans;
 }
 
 function getCoursePeriods(lec, sec) {
@@ -104,7 +111,6 @@ export default {
       numSolution: 0,
       raw: null,
       chosen: [],
-      timegrid: new Uint16Array(arrlen),
       colors: [
         "#fff1f0",
         "#f9f0ff",
@@ -134,45 +140,33 @@ export default {
     this.color = this.colors[Math.floor(Math.random() * 7)];
   },
   methods: {
-    getTime(a) {
-      return this.timegrid[a >> 4] & (1 << (a & 0xf));
-    },
-
-    getTimeAnd(a, b) {
-      for (var i = a; i < b; i++) if (this.getTime(i)) return true;
-      return false;
-    },
-
-    fillTimeBlock(a, b, v) {
-      for (var i = a; i < b; i++)
-        if (v) this.timegrid[i >> 4] |= 1 << (i & 0xf);
-        else this.timegrid[i >> 4] &= 0xffff - (1 << (i & 0xf));
-    },
-
-    getGrids(c) {
+    getGrids() {
+      if (!timegrid) return [];
       const arr = [];
+      var temp = [];
       var cont = false;
-      for (var r = 0; r < 100; r++)
-        if (this.getTime((c - 1) * daymin + Math.floor((daymin / 100) * r))) {
+      for (var r = 0; r < timeset.length - 1; r++)
+        if (getTime(r)) {
           if (!cont) {
-            arr.push(r);
+            temp = r;
             cont = true;
           }
-        } else cont = false;
-
+        } else {
+          arr.push([temp, r]);
+          cont = false;
+        }
       return arr;
     },
 
-    blockStyle(r, c) {
-      let x = r;
-      while (this.getTime((c - 1) * daymin + Math.floor((daymin / 100) * x)))
-        x++;
-
+    blockStyle(r) {
+      const day = Math.floor(timeset[r[0]] / 1440);
+      const t0 = timeset[r[0]] % 1440;
+      const tw = timeset[r[1]] - timeset[r[0]];
       let res = "";
-      res += "top: " + r + "%;";
-      res += "left: " + 20 * (c - 1) + "%;";
+      res += "top: " + ((t0 - 480) * 100) / (1440 - 480) + "%;";
+      res += "left: " + 20 * (day - 1) + "%;";
       res += "background-color: " + this.color + ";";
-      res += "height: " + (x - r) + "%";
+      res += "height: " + (tw * 100) / (1440 - 480) + "%";
       return res;
     },
 
@@ -213,7 +207,7 @@ export default {
       this.raw = {
         courses: [],
         events: [],
-        break: this.limit.break / minblock,
+        break: this.limit.break,
         begin: daytime2num("", this.limit.timerange[0]),
         end: daytime2num("", this.limit.timerange[1])
       };
@@ -236,18 +230,22 @@ export default {
           const lec = map.data[sect];
           const lecData = detail.map[lec.code];
           if (!lec.sections.length) {
-            const p = getCoursePeriods(lecData, null);
-            detail.periods[lec.code] = p;
-            if (this.checkedEnrollCode.indexOf(lec.code) >= 0)
-              course.push({ enrollCode: lec.code, periods: p });
+            const ps = getCoursePeriods(lecData, null);
+            detail.periods[lec.code] = ps;
+            if (this.checkedEnrollCode.indexOf(lec.code) >= 0) {
+              const px = ps.map(e => [e[0], e[1]]);
+              course.push({ enrollCode: lec.code, periods: px });
+            }
           } else {
             detail.s2c[id][sect] = lec.code;
             lec.sections.forEach(sec => {
               const secData = detail.map[sec];
-              const p = getCoursePeriods(lecData, secData);
-              detail.periods[sec] = p;
-              if (this.checkedEnrollCode.indexOf(sec) >= 0)
-                course.push({ enrollCode: sec, periods: p });
+              const ps = getCoursePeriods(lecData, secData);
+              detail.periods[sec] = ps;
+              if (this.checkedEnrollCode.indexOf(sec) >= 0) {
+                const px = ps.map(e => [e[0], e[1]]);
+                course.push({ enrollCode: sec, periods: px });
+              }
             });
           }
         }
@@ -287,6 +285,12 @@ export default {
       this.chosen = [];
       this.clearResults();
       this.numSolution = 0;
+      timeset.sort((a, b) => a - b);
+      timegrid = new Uint16Array((timeset.length >> 4) + 1);
+      for (let c of this.raw.courses)
+        for (let s of c)
+          for (let p of s.periods)
+            for (let i in p) p[i] = timeset.indexOf(p[i]);
     },
 
     dfs: async function(I) {
@@ -296,72 +300,73 @@ export default {
         // success for one solution
         this.numSolution++;
         this.addResults(this.chosen);
-        await sleep(sleepTime);
         return;
       }
+
+      {
+        const time = +new Date();
+        if (time - lastTime >= pauseItv) {
+          await new Promise(res => setTimeout(res, delay));
+          this.$forceUpdate();
+          lastTime = +new Date();
+        }
+      }
+
       for (let choice of this.raw.courses[I]) {
-        // console.log(choice.title);
-        if (!this.checkAdd(choice.periods)) continue;
-        if (!this.checkEvents() || !this.checkLimit()) {
-          this.erase(choice.periods);
+        if (getTimeAnd(choice.periods)) continue;
+        if (!this.checkLimit(choice.periods)) continue;
+        fillTimeBlock(choice.periods, true);
+        if (!this.checkEvents(choice.periods)) {
+          fillTimeBlock(choice.periods, false);
           continue;
         }
         this.chosen.push(choice.enrollCode);
         await this.dfs(I + 1);
-        this.erase(choice.periods);
+        fillTimeBlock(choice.periods, false);
         this.chosen.pop();
       }
       return;
     },
 
-    checkAdd: function(periods) {
-      for (let period of periods)
-        if (this.getTimeAnd(period[0], period[1])) return false;
-
-      for (let period of periods)
-        this.fillTimeBlock(period[0], period[1], true);
-
-      return true;
-    },
-
-    checkEvents: function() {
-      for (let e of this.raw.events) {
-        for (let p of e.periods) {
-          let space = 0;
-          for (let i = p[0]; i < p[1]; i++) {
-            if (!this.getTime(i)) {
-              if (++space >= e.duration) break;
-            } else space = 0;
+    checkEvents: function(cps) {
+      for (let cp of cps)
+        for (let e of this.raw.events) {
+          for (let p of e.periods) {
+            let space = 0;
+            if (cp[0] >= p[1] || cp[1] <= p[0]) continue;
+            for (let i = p[0]; i < p[1]; i++) {
+              if (!getTime(i)) {
+                space += timeset[i + 1] - timeset[i];
+                if (space >= e.duration) break;
+              } else space = 0;
+            }
+            if (space < e.duration) return false;
           }
-          if (space < e.duration) return false;
         }
-      }
       return true;
     },
 
-    checkLimit: function() {
-      let space = 0;
-      for (let i = 0; i < totlen; i++) {
-        let daytime = i % daymin;
-        // check time range
-        if (
-          this.getTime(i) &&
-          (daytime < this.raw.begin || daytime > this.raw.end)
-        )
-          return false;
-        if (this.getTime(i)) {
-          if (space > 0 && space < this.raw.break - 1) return false;
-          space = 0;
-        } else {
-          space++;
+    checkLimit: function(cps) {
+      for (let p of cps) {
+        const p0 = timeset[p[0]] % 1440;
+        const p1 = timeset[p[1]] % 1440;
+        if (p0 < this.raw.begin || p1 > this.raw.end) return false;
+        let space = 0;
+        let i = 0;
+        while (space < this.raw.break) {
+          i++;
+          if (getTime(p[0] - i)) return false;
+          space += timeset[p[0] - i + 1] - timeset[p[0] - i];
+        }
+        space = 0;
+        i = 0;
+        while (space < this.raw.break) {
+          if (getTime(p[1] + i)) return false;
+          space += timeset[p[1] + i + 1] - timeset[p[1] + i];
+          i++;
         }
       }
       return true;
-    },
-
-    erase: function(periods) {
-      for (let period of periods)
-        this.fillTimeBlock(period[0], period[1], false);
     }
   }
 };
