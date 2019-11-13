@@ -54,6 +54,7 @@ export default {
           e.min = Math.min(e.min, e.data[x].date);
           e.max = Math.max(e.max, e.data[x].date);
           if (e.data[x].sp == 0 && e.zero == -1) e.zero = +x;
+          if (e.data[x].sp > 1 && e.zero >= 0) e.zero = -1; // Threshold = 1
         }
         gmin = Math.min(gmin, e.min);
         gmax = Math.max(gmax, e.max);
