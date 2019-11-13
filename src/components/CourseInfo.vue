@@ -23,7 +23,12 @@
         <strong>GE :</strong>
         {{GEs}}
       </div>
-      <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
+      <el-collapse>
+        <el-collapse-item title="Enroll History (This Quarter)">
+          <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
+        </el-collapse-item>
+      </el-collapse>
+
       <TimeTable v-if="res" v-bind:res="res" @click-row="clickrow" @click-exp="clickexp" />
     </div>
   </div>
