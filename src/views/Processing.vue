@@ -263,7 +263,6 @@ export default {
     },
 
     getCourseInfo: async function() {
-      let temp = null;
       try {
         const resp = await axios({
           method: "post",

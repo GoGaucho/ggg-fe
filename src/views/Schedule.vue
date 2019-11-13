@@ -19,7 +19,7 @@
     <div class="table">
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
       <template v-for="c in getPeriods(result)">
-        <el-tooltip v-bind:key="c.key" effect="light" open-delay="300">
+        <el-tooltip v-bind:key="c.key" effect="light" :open-delay="300">
           <div class="tooltip" slot="content">
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
