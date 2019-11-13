@@ -70,14 +70,26 @@ export default {
 
       const lecs = this.codes.map(e => e[0]);
 
+      const getColor = e =>
+        lecs.indexOf(e.code) < 0 ? "#0000003f" : "hsl(78,71%,46%,25%)";
+
       this.res.datasets = data.map(e => ({
         label: e.code,
         fill: false,
         lineTension: 0,
+
         pointHitRadius: 10,
-        pointRadius: 3,
-        borderColor:
-          lecs.indexOf(e.code) < 0 ? "#0000003f" : "hsl(78,71%,46%,50%)",
+
+        pointRadius: 2,
+        borderWidth: 2,
+        borderColor: getColor(e),
+        backgroundColor: getColor(e),
+
+        pointHoverRadius: 2,
+        hoverBorderWidth: 2,
+        hoverBorderColor: "#000000",
+        hoverBackgroundColor: "#ffffff",
+
         data: e.data.map(x => ({ t: new Date(x.date * 1000), y: x.sp }))
       }));
       var ctx = document.getElementById("history-canvas").getContext("2d");
@@ -85,6 +97,9 @@ export default {
         type: "line",
         data: this.res,
         options: {
+          hover: {
+            mode: "dataset"
+          },
           scales: {
             xAxes: [
               {
