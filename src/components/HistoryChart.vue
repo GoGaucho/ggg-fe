@@ -12,17 +12,22 @@ import Chart from "chart.js";
 
 export default {
   name: "HistoryChart",
-  props: ["id", "codes"],
+  props: ["id", "codes", "disables"],
   data() {
     return {
       loading: false,
-      res: {}
+      res: {},
+      data: null,
+      expandedList: null,
+      focus: null,
+      chart: null
     };
   },
   computed: {
     ...mapState(["quarter"])
   },
   mounted() {
+    this.expandedList = this.codes.map(e => e[0]);
     this.loadHistory();
   },
   methods: {
@@ -67,18 +72,28 @@ export default {
         e.data.forEach(x => (x.sp = Math.max(0, x.sp)));
         e.data.sort((a, b) => a.date - b.date);
       }
+      this.data = data;
+      this.generateData();
+      this.putOnChart();
+    },
 
+    generateData() {
+      if (!this.data) return;
       const lecs = this.codes.map(e => e[0]);
 
       const getColor = e =>
-        lecs.indexOf(e.code) < 0 ? "#0000003f" : "hsl(78,71%,46%,25%)";
+        e.code == this.focus
+          ? "#ff00ff"
+          : lecs.indexOf(e.code) < 0
+          ? "#0000003f"
+          : "hsl(78,71%,46%,25%)";
 
-      this.res.datasets = data.map(e => ({
+      this.res.datasets = this.data.map(e => ({
         label: e.code,
         fill: false,
         lineTension: 0,
-
-        pointHitRadius: 10,
+        hidden: this.expandedList.indexOf(e.code) < 0,
+        pointHitRadius: 6,
 
         pointRadius: 2,
         borderWidth: 2,
@@ -92,26 +107,57 @@ export default {
 
         data: e.data.map(x => ({ t: new Date(x.date * 1000), y: x.sp }))
       }));
+    },
+
+    updateData(resetHidden) {
+      const lecs = this.codes.map(e => e[0]);
+
+      const getColor = e =>
+        e.label == this.focus
+          ? "#ff00ff"
+          : lecs.indexOf(e.label) < 0
+          ? "#0000003f"
+          : "hsl(78,71%,46%,25%)";
+
+      for (let e of this.res.datasets) {
+        e.borderColor = getColor(e);
+        e.backgroundColor = getColor(e);
+        if (resetHidden) {
+          e.hidden = this.expandedList.indexOf(e.label) < 0;
+        }
+      }
+    },
+
+    putOnChart() {
       var ctx = document.getElementById("history-canvas").getContext("2d");
-      new Chart(ctx, {
+      this.chart = new Chart(ctx, {
         type: "line",
         data: this.res,
         options: {
-          hover: {
-            mode: "dataset"
-          },
-          scales: {
-            xAxes: [
-              {
-                type: "time",
-                time: {
-                  unit: "day"
-                }
-              }
-            ]
-          }
+          hover: { mode: "dataset" },
+          scales: { xAxes: [{ type: "time", time: { unit: "day" } }] }
         }
       });
+    },
+
+    showOnly(code) {
+      if (this.focus == code) this.focus = "";
+      else this.focus = code;
+      this.updateData(false);
+      this.chart.update();
+    },
+
+    expand(lec, secs, expanded) {
+      secs.forEach(e => {
+        const l = this.expandedList;
+        if (expanded) l.push(e);
+        else {
+          const ind = l.indexOf(e);
+          if (ind >= 0) l.splice(ind, 1);
+        }
+      });
+      this.updateData(true);
+      this.chart.update();
     }
   }
 };

@@ -8,7 +8,6 @@
           @click="addSelected(course.courseId)"
           class="add"
         >ADD to List</span>&nbsp;
-        <span @click="showHistory=true" class="add">Show Enroll Trend</span>&nbsp;
         <span @click="$emit(`colapse`)" class="add">Close</span>
       </h2>
       <p>{{course.description}}</p>
@@ -24,9 +23,8 @@
         <strong>GE :</strong>
         {{GEs}}
       </div>
-
-      <HistoryChart v-if="showHistory" :id="id" :codes="codes" />
-      <TimeTable v-if="res" v-bind:res="res" />
+      <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
+      <TimeTable v-if="res" v-bind:res="res" @click-row="clickrow" @click-exp="clickexp" />
     </div>
   </div>
 </template>
@@ -46,9 +44,9 @@ export default {
   data() {
     return {
       loading: false,
-      showHistory: false,
       res: [],
       codes: [],
+      disables: [],
       course: null,
       gradingOption: "",
       units: "",
@@ -92,6 +90,7 @@ export default {
         let ss = {};
         ss.enrollCode = s.enrollCode;
         ss.disabled = s.courseCancelled || s.classClosed;
+        if (ss.disabled) this.disables.push(ss.enrollCode);
         ss.max = s.maxEnroll;
         ss.space = s.maxEnroll - s.enrolledTotal;
 
@@ -186,6 +185,18 @@ export default {
           }
         }
       });
+    },
+
+    clickrow(row) {
+      this.$refs.hist.showOnly(row.enrollCode);
+    },
+
+    clickexp(row, expanded) {
+      this.$refs.hist.expand(
+        row.enrollCode,
+        row.children.map(e => e.enrollCode),
+        expanded
+      );
     }
   }
 };
