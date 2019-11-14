@@ -53,6 +53,7 @@ export default {
   data() {
     return {
       I: "0",
+      oldI: "0",
       options: [],
       processedResults: null,
       dispersed: null,
@@ -79,7 +80,7 @@ export default {
     ...mapState(["quarter", "results", "selected", "courseDetails"])
   },
   methods: {
-    setList() {
+    setList(I = 0) {
       if (this.processedResults == null) this.processedResults = this.results;
       this.options = [];
       for (let i in this.processedResults) {
@@ -88,7 +89,7 @@ export default {
           key: i
         });
       }
-      this.choose(0);
+      this.choose(I);
       this.addColor();
     },
 
@@ -100,10 +101,11 @@ export default {
     },
 
     disperse: function(c) {
+      if (this.dispersed == null) this.oldI = this.I;
       if (this.dispersed == c) {
         this.dispersed = null;
         this.processedResults = this.results;
-        this.setList();
+        this.setList(this.oldI);
         return;
       }
       this.dispersed = c;
@@ -117,8 +119,21 @@ export default {
         if (!map[key]) ans.push((map[key] = [...r]));
         if (map[key].indexOf(k) < 0) map[key].push(k);
       });
+
+      const contains = r => {
+        for (let e of this.result) if (r.indexOf(e) < 0) return false;
+        return true;
+      };
+
+      let temp = null;
+      for (let r in ans)
+        if (contains(ans[r])) {
+          temp = r;
+          break;
+        }
+
       this.processedResults = ans;
-      this.setList();
+      this.setList(+temp);
     },
 
     getPeriods(r) {
@@ -148,7 +163,7 @@ export default {
         });
       });
       s.list.forEach(e => {
-        e.code = e.cs.length > 1 ? ` (${e.cs.length})`:"";
+        e.code = e.cs.length > 1 ? ` (${e.cs.length})` : "";
         if (e.cs.length == 1) {
           const insts = this.courseDetails.map[e.cs[0]].instructors;
           e.ins =
