@@ -24,11 +24,14 @@
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
           <div class="card" :style="cardStyle(c.id, c.p)" @click="disperse(c.id)">
-            {{c.id + c.code}}
-            <br />
-            {{range2time(c.p)}}
-            <br />
-            {{c.p[2]}}
+            <div class="cardrow">
+              <div class="incard cardl">{{c.id + c.code}}</div>
+              <div class="incard cardr">{{range2time(c.p)}}</div>
+            </div>
+            <div class="cardrow">
+              <div class="incard cardl">{{c.p[2]}}</div>
+              <div class="incard cardr">{{c.ins}}</div>
+            </div>
           </div>
         </el-tooltip>
       </template>
@@ -130,7 +133,12 @@ export default {
             kl.push(key);
             if (!count[id]) count[id] = 0;
             count[id]++;
-            const dat = { id: id, p: p, cs: [e], key: `${id}-${count[id]}` };
+            const dat = {
+              id: id,
+              p: p,
+              cs: [e],
+              key: `${id}-${count[id]}`
+            };
             s.set[key] = dat;
             s.list.push(dat);
           } else {
@@ -141,13 +149,33 @@ export default {
       });
       s.list.forEach(e => {
         e.code = e.cs.length > 1 ? ` (${e.cs.length} code)` : " - " + e.cs[0];
+        if (e.cs.length == 1) {
+          const insts = this.courseDetails.map[e.cs[0]].instructors;
+          e.ins =
+            insts.length == 0
+              ? "Prof: T.B.A"
+              : insts.length == 1
+              ? insts[0].instructor
+              : "(Multiple Profs)";
+        }
       });
 
       return s.list;
     },
 
     getToolTip(c) {
-      let ans = [c.id + c.code, this.range2time(c.p), c.p[2]];
+      let ans = [];
+
+      const getSpace = (e, sec = this.courseDetails.map[e]) =>
+        sec.maxEnroll - sec.enrolledTotal;
+
+      if (c.cs.length == 1) {
+        ans.push(`EnrollCode: ${c.cs[0]}`);
+        ans.push(`Space: ${getSpace(c.cs[0])}`);
+      } else {
+        ans.push("EnrollCode and Space:");
+        c.cs.forEach(e => ans.push(`${e} : ${getSpace(e)}`));
+      }
       try {
         if (c.cs.length > 1) return ans;
         const sec = this.courseDetails.map[c.cs[0]];
@@ -261,6 +289,22 @@ div.card {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+}
+div.cardrow {
+  display: flex;
+  width: 100%;
+  height: 50%;
+}
+div.incard {
+  width: 50%;
+}
+
+div.cardl {
+  left: 0%;
+}
+
+div.cardr {
+  left: 50%;
 }
 
 strong {
