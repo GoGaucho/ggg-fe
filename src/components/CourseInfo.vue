@@ -7,7 +7,8 @@
         <span
           @click="addSelected(course.courseId.replace(/\s*/g,''))"
           class="add"
-        >ADD to List</span>
+        >ADD to List</span>&nbsp;
+        <span @click="$emit(`colapse`)" class="add">Close</span>
       </h2>
       <p>{{course.description}}</p>
       <div class="note">
@@ -22,7 +23,13 @@
         <strong>GE :</strong>
         {{GEs}}
       </div>
-      <TimeTable v-if="res" v-bind:res="res" />
+      <el-collapse>
+        <el-collapse-item title="Enroll History (This Quarter)">
+          <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
+        </el-collapse-item>
+      </el-collapse>
+
+      <TimeTable v-if="res" v-bind:res="res" @click-row="clickrow" @click-exp="clickexp" />
     </div>
   </div>
 </template>
@@ -30,17 +37,21 @@
 <script>
 import { mapState, mapMutations } from "vuex";
 import TimeTable from "@/components/TimeTable.vue";
+import HistoryChart from "@/components/HistoryChart.vue";
 
 export default {
   name: "CourseInfo",
   components: {
-    TimeTable
+    TimeTable,
+    HistoryChart
   },
   props: ["id"],
   data() {
     return {
       loading: false,
       res: [],
+      codes: [],
+      disables: [],
       course: null,
       gradingOption: "",
       units: "",
@@ -84,6 +95,7 @@ export default {
         let ss = {};
         ss.enrollCode = s.enrollCode;
         ss.disabled = s.courseCancelled || s.classClosed;
+        if (ss.disabled) this.disables.push(ss.enrollCode);
         ss.max = s.maxEnroll;
         ss.space = s.maxEnroll - s.enrolledTotal;
 
@@ -131,6 +143,11 @@ export default {
       }
       this.res = res;
 
+      this.codes = this.res.map(e => [
+        e.enrollCode,
+        e.children.map(x => x.enrollCode)
+      ]);
+
       this.gradingOption = (a =>
         !a ? "Optional" : a == "L" ? "Letter" : "Pass / No Pass")(
         c.gradingOption
@@ -146,6 +163,45 @@ export default {
           : ge
               .map(e => `${e.geCode}(${e.geCollege})`.replace(/\s/g, ""))
               .join(",    "))(c.generalEducation);
+    },
+
+    loadHistory() {
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
+          datasets: [
+            {
+              label: "History of courses",
+              data: [12, 19, 3, 5, 2, 3],
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          scales: {
+            yAxes: [
+              {
+                ticks: {
+                  beginAtZero: true
+                }
+              }
+            ]
+          }
+        }
+      });
+    },
+
+    clickrow(row) {
+      this.$refs.hist.showOnly(row.enrollCode);
+    },
+
+    clickexp(row, expanded) {
+      this.$refs.hist.expand(
+        row.enrollCode,
+        row.children.map(e => e.enrollCode),
+        expanded
+      );
     }
   }
 };

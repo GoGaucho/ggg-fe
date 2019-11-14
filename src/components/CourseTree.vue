@@ -134,6 +134,7 @@ export default {
           ss.disables = s.courseCancelled || s.classClosed;
           ss.max = s.maxEnroll;
           ss.space = s.maxEnroll - s.enrolledTotal;
+          ss.section = s.section;
 
           for (let i in s.instructors) {
             if (i == 0) ss.instructor = "";
@@ -169,12 +170,17 @@ export default {
             ss.days = ss.days.replace(/\s*/g, "");
           }
 
+          if (ss.days == "T.B.A.") continue;
+
           if (s.section % 100 == 0) {
             // process lecture/section
             ss.children = [];
             ss.status = "lecture";
             res.push(ss);
-          } else {
+          } else if (
+            s.section - (s.section % 100) ==
+            res[res.length - 1].section
+          ) {
             ss.status = "section";
             res[res.length - 1].children.push(ss);
           }

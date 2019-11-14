@@ -1,7 +1,7 @@
 <template>
   <div class="course-list">
     <div v-for="c in courseList.list" :key="c.id" class="course-card">
-      <CourseInfo v-if="expanded == c.id" :id="c.id" />
+      <CourseInfo v-if="expanded == c.id" :id="c.id" @colapse="expanded = false" />
       <div v-else class="row whole" @click="expand(c.id)">
         <div class="row left">
           <h3>>&nbsp;{{c.id}}</h3>

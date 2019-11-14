@@ -6,6 +6,8 @@
       style="width: 100%;"
       row-key="enrollCode"
       :row-class-name="tableRowClassName"
+      @row-click="$emit(`click-row`,$event)"
+      @expand-change="clickexp"
     >
       <el-table-column prop="enrollCode" label="EnrollCode" width="100" align="center" />
       <el-table-column prop="instructor" label="Instructor" align="center" />
@@ -29,6 +31,10 @@ export default {
       if (row.disabled) return "disabled-row";
       if (row.status == "lecture") return "lecture-row";
       return "";
+    },
+
+    clickexp(row, expanded) {
+      this.$emit("click-exp", row, expanded);
     }
   }
 };

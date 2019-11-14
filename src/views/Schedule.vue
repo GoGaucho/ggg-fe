@@ -19,16 +19,19 @@
     <div class="table">
       <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
       <template v-for="c in getPeriods(result)">
-        <el-tooltip v-bind:key="c.key" effect="light" open-delay="300">
+        <el-tooltip v-bind:key="c.key" effect="light" :open-delay="300">
           <div class="tooltip" slot="content">
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
           <div class="card" :style="cardStyle(c.id, c.p)" @click="disperse(c.id)">
-            {{c.id + c.code}}
-            <br />
-            {{range2time(c.p)}}
-            <br />
-            {{c.p[2]}}
+            <div class="cardrow">
+              <div class="incard cardl">{{c.id + c.code}}</div>
+              <div class="incard cardr">{{range2time(c.p)}}</div>
+            </div>
+            <div class="cardrow">
+              <div class="incard cardl">{{c.p[2]}}</div>
+              <div class="incard cardr">{{c.ins}}</div>
+            </div>
           </div>
         </el-tooltip>
       </template>
@@ -50,6 +53,7 @@ export default {
   data() {
     return {
       I: "0",
+      oldI: "0",
       options: [],
       processedResults: null,
       dispersed: null,
@@ -76,7 +80,7 @@ export default {
     ...mapState(["quarter", "results", "selected", "courseDetails"])
   },
   methods: {
-    setList() {
+    setList(I = 0) {
       if (this.processedResults == null) this.processedResults = this.results;
       this.options = [];
       for (let i in this.processedResults) {
@@ -85,7 +89,7 @@ export default {
           key: i
         });
       }
-      this.choose(0);
+      this.choose(I);
       this.addColor();
     },
 
@@ -97,10 +101,11 @@ export default {
     },
 
     disperse: function(c) {
+      if (this.dispersed == null) this.oldI = this.I;
       if (this.dispersed == c) {
         this.dispersed = null;
         this.processedResults = this.results;
-        this.setList();
+        this.setList(this.oldI);
         return;
       }
       this.dispersed = c;
@@ -114,8 +119,21 @@ export default {
         if (!map[key]) ans.push((map[key] = [...r]));
         if (map[key].indexOf(k) < 0) map[key].push(k);
       });
+
+      const contains = r => {
+        for (let e of this.result) if (r.indexOf(e) < 0) return false;
+        return true;
+      };
+
+      let temp = null;
+      for (let r in ans)
+        if (contains(ans[r])) {
+          temp = r;
+          break;
+        }
+
       this.processedResults = ans;
-      this.setList();
+      this.setList(+temp);
     },
 
     getPeriods(r) {
@@ -130,7 +148,12 @@ export default {
             kl.push(key);
             if (!count[id]) count[id] = 0;
             count[id]++;
-            const dat = { id: id, p: p, cs: [e], key: `${id}-${count[id]}` };
+            const dat = {
+              id: id,
+              p: p,
+              cs: [e],
+              key: `${id}-${count[id]}`
+            };
             s.set[key] = dat;
             s.list.push(dat);
           } else {
@@ -140,14 +163,34 @@ export default {
         });
       });
       s.list.forEach(e => {
-        e.code = e.cs.length > 1 ? ` (${e.cs.length} code)` : " - " + e.cs[0];
+        e.code = e.cs.length > 1 ? ` (${e.cs.length})` : "";
+        if (e.cs.length == 1) {
+          const insts = this.courseDetails.map[e.cs[0]].instructors;
+          e.ins =
+            insts.length == 0
+              ? "Prof: T.B.A"
+              : insts.length == 1
+              ? insts[0].instructor
+              : "(Multiple Profs)";
+        }
       });
 
       return s.list;
     },
 
     getToolTip(c) {
-      let ans = [c.id + c.code, this.range2time(c.p), c.p[2]];
+      let ans = [];
+
+      const getSpace = (e, sec = this.courseDetails.map[e]) =>
+        sec.maxEnroll - sec.enrolledTotal;
+
+      if (c.cs.length == 1) {
+        ans.push(`EnrollCode: ${c.cs[0]}`);
+        ans.push(`Space: ${getSpace(c.cs[0])}`);
+      } else {
+        ans.push("EnrollCode and Space:");
+        c.cs.forEach(e => ans.push(`${e} : ${getSpace(e)}`));
+      }
       try {
         if (c.cs.length > 1) return ans;
         const sec = this.courseDetails.map[c.cs[0]];
@@ -261,6 +304,21 @@ div.card {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+}
+div.cardrow {
+  display: flex;
+  width: 100%;
+}
+div.incard {
+  width: 50%;
+}
+
+div.cardl {
+  left: 0%;
+}
+
+div.cardr {
+  left: 50%;
 }
 
 strong {
