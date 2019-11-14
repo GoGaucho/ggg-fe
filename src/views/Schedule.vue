@@ -148,7 +148,7 @@ export default {
         });
       });
       s.list.forEach(e => {
-        e.code = e.cs.length > 1 ? ` (${e.cs.length} code)` : " - " + e.cs[0];
+        e.code = e.cs.length > 1 ? ` (${e.cs.length})`:"";
         if (e.cs.length == 1) {
           const insts = this.courseDetails.map[e.cs[0]].instructors;
           e.ins =
@@ -293,7 +293,6 @@ div.card {
 div.cardrow {
   display: flex;
   width: 100%;
-  height: 50%;
 }
 div.incard {
   width: 50%;
