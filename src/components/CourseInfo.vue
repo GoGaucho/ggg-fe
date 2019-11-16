@@ -52,6 +52,7 @@ export default {
       res: [],
       codes: [],
       disables: [],
+      rate: {},
       course: null,
       gradingOption: "",
       units: "",
@@ -135,6 +136,7 @@ export default {
           // process lecture/section
           ss.children = [];
           ss.status = "lecture";
+          ss.rate = "loading...";
           res.push(ss);
         } else {
           ss.status = "section";
@@ -163,6 +165,58 @@ export default {
           : ge
               .map(e => `${e.geCode}(${e.geCollege})`.replace(/\s/g, ""))
               .join(",    "))(c.generalEducation);
+      this.getProfRatings();
+    },
+
+    getProfRatings: async function() {
+      const rater = (lec, rs) => {
+        rs = rs.filter(r => r.rate || r.diff);
+        if (!rs || rs.length == 0) {
+          lec.rate = "not found";
+          return;
+        }
+        if (rs.length > 1) {
+          lec.rate = "multiple...";
+          rs.forEach(r => {
+            if (!r.rate) r.rate = "X";
+            if (!r.diff) r.diff = "X";
+          });
+          lec.rateToolTip = {
+            data: rs,
+            msg: "Multiple profs with this name found"
+          };
+          return;
+        }
+        const r = rs[0];
+        const rr = r.rate ? r.rate : "X";
+        const rd = r.diff ? r.diff : "X";
+        lec.rate = `${rr}/${rd}`;
+        lec.rateToolTip = {
+          msg: `Name: ${r.name}, Deptartment: ${r.dept}`,
+          link: r.rmpid
+        };
+      };
+
+      for (let lec of this.res) {
+        if (lec.instructor && lec.instructor != "T.B.A") {
+          if (this.rate[lec.instructor] === undefined) {
+            let resp = null;
+            try {
+              resp = await axios({
+                method: "get",
+                url: `/api/rmp?prof=${lec.instructor}`
+              });
+            } catch (error) {
+              console.log(error);
+            }
+            if (resp) {
+              const r = resp.data;
+              this.rate[lec.instructor] = r ? r : null;
+              rater(lec, r);
+            }
+          } else rater(lec, this.rate[lec.instructor]);
+        } else lec.rate = "";
+      }
     },
 
     loadHistory() {
