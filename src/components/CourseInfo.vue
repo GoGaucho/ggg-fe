@@ -28,8 +28,12 @@
           <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
         </el-collapse-item>
       </el-collapse>
-
-      <TimeTable v-if="res" v-bind:res="res" @click-row="clickrow" @click-exp="clickexp" />
+      <template v-if="ress">
+        <div v-for="res in ress" v-bind:key="res.ses">
+          <h3 v-if="res.ses.length">Session {{res.ses}}</h3>
+          <TimeTable v-bind:res="res.res" @click-row="clickrow" @click-exp="clickexp" />
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -49,7 +53,7 @@ export default {
   data() {
     return {
       loading: false,
-      res: [],
+      ress: [],
       codes: [],
       disables: [],
       rate: {},
@@ -84,15 +88,26 @@ export default {
         })
         .catch(error => {
           this.loading = false;
+          console.log(error);
           swal("ERROR", "Network Error", "error");
         });
     },
 
     getData() {
       const c = this.course;
+      let ress = [];
       let res = [];
+      let ses = "";
       for (let i in c.classSections) {
         let s = c.classSections[i];
+        if (s.session) {
+          if (ses == "") ses = s.session.charAt(5);
+          else if (ses != s.session.charAt(5)) {
+            ress.push({ ses: ses, res: res });
+            res = [];
+            ses = "";
+          }
+        }
         let ss = {};
         ss.enrollCode = s.enrollCode;
         ss.disabled = s.courseCancelled || s.classClosed;
@@ -143,12 +158,14 @@ export default {
           res[res.length - 1].children.push(ss);
         }
       }
-      this.res = res;
+      if (res.length > 0) ress.push({ ses: ses, res: res });
+      this.ress = ress;
 
-      this.codes = this.res.map(e => [
-        e.enrollCode,
-        e.children.map(x => x.enrollCode)
-      ]);
+      this.codes = this.ress
+        .map(res =>
+          res.res.map(e => [e.enrollCode, e.children.map(x => x.enrollCode)])
+        )
+        .flat();
 
       this.gradingOption = (a =>
         !a ? "Optional" : a == "L" ? "Letter" : "Pass / No Pass")(
@@ -196,26 +213,27 @@ export default {
           link: r.rmpid
         };
       };
-
-      for (let lec of this.res) {
-        if (lec.instructor && lec.instructor != "T.B.A") {
-          if (this.rate[lec.instructor] === undefined) {
-            let resp = null;
-            try {
-              resp = await axios({
-                method: "get",
-                url: `/api/rmp?prof=${lec.instructor}`
-              });
-            } catch (error) {
-              console.log(error);
-            }
-            if (resp) {
-              const r = resp.data;
-              this.rate[lec.instructor] = r ? r : null;
-              rater(lec, r);
-            }
-          } else rater(lec, this.rate[lec.instructor]);
-        } else lec.rate = "";
+      for (let res of this.ress) {
+        for (let lec of res.res) {
+          if (lec.instructor && lec.instructor != "T.B.A") {
+            if (this.rate[lec.instructor] === undefined) {
+              let resp = null;
+              try {
+                resp = await axios({
+                  method: "get",
+                  url: `/api/rmp?prof=${lec.instructor}`
+                });
+              } catch (error) {
+                console.log(error);
+              }
+              if (resp) {
+                const r = resp.data;
+                this.rate[lec.instructor] = r ? r : null;
+                rater(lec, r);
+              }
+            } else rater(lec, this.rate[lec.instructor]);
+          } else lec.rate = "";
+        }
       }
     },
 
