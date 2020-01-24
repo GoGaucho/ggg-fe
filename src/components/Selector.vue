@@ -30,7 +30,13 @@
         v-model="query.search"
         @keyup.enter.native="getList('course')"
       ></el-input>
-      <el-button type="primary" @click="getList('course')">Search</el-button>
+      <el-button type="primary" @click="getList('course')">Search</el-button>&nbsp;
+      <el-checkbox
+        v-if="by=='Search'"
+        v-model="query.titleOnly"
+        label="Match Title Only"
+        @change="change('filter')"
+      />
     </div>
 
     <div v-if="by == 'Department'" class="row">
@@ -82,13 +88,29 @@
         </el-select>
       </template>
     </div>
-
-    <el-checkbox-group v-model="checkList" @change="change('filter')">
-      <el-checkbox-button label="Lower"></el-checkbox-button>
-      <el-checkbox-button label="Upper"></el-checkbox-button>
-      <el-checkbox-button label="Grad"></el-checkbox-button>
-      <el-checkbox-button label="Postgrad"></el-checkbox-button>
-    </el-checkbox-group>
+    <div class="row">
+      <el-checkbox-group v-model="checkList" @change="change('filter')">
+        <el-checkbox-button label="Lower" />
+        <el-checkbox-button label="Upper" />
+        <el-checkbox-button label="Grad" />
+        <el-checkbox-button label="Postgrad" />
+      </el-checkbox-group>
+    </div>
+    <div v-if="by='GE'" class="row">
+      <strong>Must includes:</strong>
+      <el-checkbox-group v-model="query.forcedGE" @change="change('filter')">
+        <el-checkbox-button v-for="ge in query.GE" :key="'force-'+ge" :label="ge" />
+      </el-checkbox-group>
+    </div>
+    <div v-if="by='GE'" class="row" style="width:100%;">
+      <strong>Min GE:</strong>
+      <el-input-number
+        v-model="query.minGE"
+        :min="0"
+        :max="query.GE.length"
+        @change="change('filter')"
+      />
+    </div>
   </div>
 </template>
 
@@ -110,7 +132,10 @@ export default {
         search: "",
         department: "",
         college: "",
-        GE: []
+        GE: [],
+        titleOnly: false,
+        forcedGE: [],
+        minGE: 1
       },
       options: {
         quarter: [],
@@ -118,8 +143,8 @@ export default {
         college: [],
         GE: []
       },
-      tmplist:[],
-      tmpge:[],
+      tmplist: [],
+      tmpge: [],
       checkList: ["Lower", "Upper"]
     };
   },
@@ -178,11 +203,16 @@ export default {
       }
 
       if (key == "GE") {
+        this.query.forcedGE = this.query.forcedGE.filter(
+          e => this.query.GE.indexOf(e) >= 0
+        );
+        this.query.minGE = Math.min(this.query.minGE, this.query.GE.length);
         if (this.query.GE.length) this.getList("course");
       }
 
-      if(key == "filter")
-        this.setList(this.tmplist,this.tmpge);
+      if (key == "filter") {
+        this.setList(this.tmplist, this.tmpge);
+      }
     },
 
     setList(list, ge) {
@@ -217,6 +247,18 @@ export default {
       };
 
       var f3 = e => {
+        if (
+          this.by == "Search" &&
+          this.query.titleOnly &&
+          !e.id.match(this.query.search)
+        )
+          return false;
+
+        if (this.by == "GE") {
+          if (e.sum < this.query.minGE) return false;
+          for (var fge of this.query.forcedGE) if (!e[fge]) return false;
+        }
+
         const val = f2(e.id);
         if (val == 0 && this.checkList.indexOf("Lower") >= 0) return true;
         if (val == 1 && this.checkList.indexOf("Upper") >= 0) return true;
