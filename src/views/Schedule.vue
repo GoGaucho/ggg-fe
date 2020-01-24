@@ -25,7 +25,9 @@
       </div>
     </div>
     <div class="table">
-      <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
+      <template v-bind="days">
+        <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
+      </template>
       <template v-for="c in getPeriods(result)">
         <el-tooltip v-bind:key="c.key" effect="light" :open-delay="300">
           <div class="tooltip" slot="content">
@@ -41,6 +43,9 @@
                 <div class="incard cardl">{{c.p[2]}}</div>
                 <div class="incard cardr">{{c.ins}}</div>
               </div>
+            </template>
+            <template v-if="seleSession.length>=2">
+              <div>{{c.id + c.code}}</div>
             </template>
           </div>
         </el-tooltip>
@@ -68,8 +73,8 @@ export default {
       processedResults: null,
       dispersed: null,
       result: [],
-      dayNums: [1, 2, 3, 4, 5],
-      days: ["", "Mon", "Tue", "Wed", "Thr", "Fri"],
+      dayNums: [0, 1, 2, 3, 4],
+      days: ["Mon", "Tue", "Wed", "Thr", "Fri"],
       colors: [
         "#fff1f0",
         "#f9f0ff",
@@ -119,6 +124,10 @@ export default {
           ? 1
           : a.charAt(0) - b.charAt(0)
       );
+      if (this.seleSession.length > 1) this.days = [...this.seleSession];
+      else this.days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+      this.dayNums = [];
+      for (var i = 0; i < this.days.length; i++) this.dayNums.push(i);
     },
 
     disperse: function(c) {
@@ -252,7 +261,8 @@ export default {
       let res = "";
       res += "height: 15px;";
       res += "top: -15px;";
-      res += "left: " + 20 * (dayNum - 1) + "%;";
+      res += "left: " + ((100 / this.days.length) * dayNum - 1) + "%;";
+      res += "width: " + (100 / this.days.length - 2) + "%;";
       return res;
     },
 
