@@ -25,7 +25,11 @@
 
     <div v-if="by == 'Search' && options.quarter.length" class="row">
       <strong>General Search:</strong>
-      <el-input style="width: 50%; margin-right: 10px;" v-model="query.search" @keyup.enter.native="getList('course')"></el-input>
+      <el-input
+        style="width: 50%; margin-right: 10px;"
+        v-model="query.search"
+        @keyup.enter.native="getList('course')"
+      ></el-input>
       <el-button type="primary" @click="getList('course')">Search</el-button>
     </div>
 
@@ -78,6 +82,13 @@
         </el-select>
       </template>
     </div>
+
+    <el-checkbox-group v-model="checkList" @change="change('filter')">
+      <el-checkbox label="Lower"></el-checkbox>
+      <el-checkbox label="Upper"></el-checkbox>
+      <el-checkbox label="Grad"></el-checkbox>
+      <el-checkbox label="Postgrad"></el-checkbox>
+    </el-checkbox-group>
   </div>
 </template>
 
@@ -106,7 +117,10 @@ export default {
         department: [],
         college: [],
         GE: []
-      }
+      },
+      tmplist:[],
+      tmpge:[],
+      checkList: ["Lower", "Upper"]
     };
   },
   mounted() {
@@ -134,7 +148,7 @@ export default {
           if (this.by == "Department") this.getList("department");
         }
 
-        this.setCourseList({ list: [], ge: [] });
+        this.setList([], []);
       }
 
       if (key == "quarter") {
@@ -148,7 +162,7 @@ export default {
         if (this.by == "GE") this.getList("college");
         if (this.by == "Department") this.getList("department");
 
-        this.setCourseList({ list: [], ge: [] });
+        this.setList([], []);
       }
 
       if (key == "department") {
@@ -160,12 +174,58 @@ export default {
         this.options.GE = [];
         this.getList("GE");
 
-        this.setCourseList({ list: [], ge: [] });
+        this.setList([], []);
       }
 
       if (key == "GE") {
         if (this.query.GE.length) this.getList("course");
       }
+
+      if(key == "filter")
+        this.setList(this.tmplist,this.tmpge);
+    },
+
+    setList(list, ge) {
+      this.tmplist = list;
+      this.tmpge = ge;
+      this.setCourseList({ list: this.divFilt(list), ge: ge });
+    },
+
+    divFilt: function(list) {
+      var f0 = str => {
+        for (var i = 0; i < str.length; i++) {
+          const ch = str.charAt(i);
+          if (ch >= "0" && ch <= "9") return i;
+        }
+        return -1;
+      };
+
+      var f1 = (str, i0) => {
+        for (var i = i0; i < str.length; i++) {
+          const ch = str.charAt(i);
+          if (ch < "0" || ch > "9") return i;
+        }
+        return str.length;
+      };
+
+      var f2 = str => {
+        const i0 = f0(str);
+        if (i0 < 0) return 0;
+        const i1 = f1(str, i0);
+        const sub = +str.substring(i0, i1);
+        return Math.floor(sub / 100);
+      };
+
+      var f3 = e => {
+        const val = f2(e.id);
+        if (val == 0 && this.checkList.indexOf("Lower") >= 0) return true;
+        if (val == 1 && this.checkList.indexOf("Upper") >= 0) return true;
+        if (val == 2 && this.checkList.indexOf("Grad") >= 0) return true;
+        if (val == 5 && this.checkList.indexOf("Postgrad") >= 0) return true;
+        return false;
+      };
+
+      return list.filter(e => f3(e));
     },
 
     getList: function(key) {
@@ -246,8 +306,8 @@ export default {
           })
           .then(resp => {
             let list = [];
-            for (let c of resp.data) list.push({id: c});
-            this.setCourseList({ list: list, ge: [] });
+            for (let c of resp.data) list.push({ id: c });
+            this.setList(list, []);
             if (!resp.data.length) {
               swal(
                 "No Course Found!",
@@ -275,7 +335,7 @@ export default {
             const list = [];
             for (let c of resp.data) list.push({ id: c.id });
             list.sort();
-            this.setCourseList({ list: list, ge: [] });
+            this.setList(list, []);
             this.loading = false;
           })
           .catch(error => {
@@ -293,14 +353,16 @@ export default {
                 list[c] = { id: c, sum: 0 };
                 clist.push(c);
               }
-              list[c][code.code] = "X";
-              list[c].sum++;
+              if (list[c][code.code] != "X") {
+                list[c][code.code] = "X";
+                list[c].sum++;
+              }
             });
         });
         let xlist = clist.map(e => list[e]);
         xlist.sort((a, b) => b.sum - a.sum);
 
-        this.setCourseList({ list: xlist, ge: this.query.GE });
+        this.setList(xlist, this.query.GE);
 
         this.loading = false;
       }
