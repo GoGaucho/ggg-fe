@@ -84,10 +84,10 @@
     </div>
 
     <el-checkbox-group v-model="checkList" @change="change('filter')">
-      <el-checkbox label="Lower"></el-checkbox>
-      <el-checkbox label="Upper"></el-checkbox>
-      <el-checkbox label="Grad"></el-checkbox>
-      <el-checkbox label="Postgrad"></el-checkbox>
+      <el-checkbox-button label="Lower"></el-checkbox-button>
+      <el-checkbox-button label="Upper"></el-checkbox-button>
+      <el-checkbox-button label="Grad"></el-checkbox-button>
+      <el-checkbox-button label="Postgrad"></el-checkbox-button>
     </el-checkbox-group>
   </div>
 </template>
