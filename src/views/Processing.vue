@@ -81,9 +81,9 @@ function daytime2num(day, timeString) {
 
 function getCoursePeriods(lec, sec) {
   const periods = [];
-
   const adder = tls => {
     for (let tl of tls.timeLocations) {
+      if (tl.days == null) continue;
       const days = tl.days.replace(/\s*/g, "");
       const loc = `${tl.building} - ${tl.room}`;
       for (let d of days)
