@@ -96,13 +96,13 @@
         <el-checkbox-button label="Postgrad" />
       </el-checkbox-group>
     </div>
-    <div v-if="by='GE'" class="row">
+    <div v-if="by=='GE' && options.GE.length && query.GE.length>1" class="row">
       <strong>Must includes:</strong>
       <el-checkbox-group v-model="query.forcedGE" @change="change('filter')">
         <el-checkbox-button v-for="ge in query.GE" :key="'force-'+ge" :label="ge" />
       </el-checkbox-group>
     </div>
-    <div v-if="by='GE'" class="row" style="width:100%;">
+    <div v-if="by=='GE' && options.GE.length && query.GE.length>1" class="row" style="width:100%;">
       <strong>Min GE:</strong>
       <el-input-number
         v-model="query.minGE"
@@ -178,9 +178,6 @@ export default {
 
       if (key == "quarter") {
         this.setQuarter(this.query.quarter);
-
-        this.query.department = "";
-        this.query.college = "";
         this.options.department = [];
         this.options.college = [];
         this.options.GE = [];
@@ -195,7 +192,7 @@ export default {
       }
 
       if (key == "college") {
-        this.query.GE = "";
+        this.query.GE = [];
         this.options.GE = [];
         this.getList("GE");
 
@@ -301,10 +298,19 @@ export default {
               this.options.department.push({ name: d, key: d });
             }
             this.options.department.sort();
+            let finder = 0;
+            for (var dept of this.options.department)
+              if (dept.name == this.query.department) {
+                finder++;
+                break;
+              }
+            if (finder == 0) this.query.department = "";
+            else this.getList("course");
             this.loading = false;
           })
           .catch(error => {
             this.loading = false;
+            console.log(error);
             swal("ERROR", "Network Error", "error");
           });
       }
@@ -314,9 +320,13 @@ export default {
           .then(resp => {
             this.options.college = [];
             GEColl = resp.data;
+            let finder = 0;
             for (let c of resp.data) {
               this.options.college.push({ name: c.col, key: c.col });
+              if (c.col == this.query.college) finder++;
             }
+            if (finder == 0) this.query.college = "";
+            else this.getList("GE");
             this.loading = false;
           })
           .catch(error => {
@@ -336,6 +346,10 @@ export default {
           this.options.GE.push({ name: GECode[i].code, key: GECode[i].code });
         }
         this.options.GE.sort();
+        this.query.GE = this.query.GE.filter(ge =>
+          this.options.GE.reduce((b, p) => b || p.name == ge, false)
+        );
+        if (this.query.GE.length) this.getList("course");
         this.loading = false;
       }
       if (key == "course" && this.by == "Search") {
