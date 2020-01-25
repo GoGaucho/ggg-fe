@@ -275,9 +275,9 @@ export default {
       // events
 
       const sumf = e =>
-        (this.summer ? [0, 1, 2, 3] : [0]).map(v =>
-          e.days.map(d => e.timerange.map(r => daytime2num(d, r, v)))
-        );
+        (this.summer ? [0, 1, 2, 3] : [0])
+          .map(v => e.days.map(d => e.timerange.map(r => daytime2num(d, r, v))))
+          .flat();
 
       this.raw.events = this.events.map(e => ({
         title: e.name,
@@ -314,6 +314,8 @@ export default {
         for (let s of c)
           for (let p of s.periods)
             for (let i in p) p[i] = timeset.indexOf(p[i]);
+      for (let e of this.raw.events)
+        for (let p of e.periods) for (let i in p) p[i] = timeset.indexOf(p[i]);
     },
 
     dfs: async function(I) {
@@ -358,7 +360,7 @@ export default {
             let space = 0;
             if (cp[0] >= p[1] || cp[1] <= p[0]) continue;
             for (let i = p[0]; i < p[1]; i++) {
-              if (!getTime(i)) {
+              if ((cp[0] > i || cp[1] <= i) && !getTime(i)) {
                 space += timeset[i + 1] - timeset[i];
                 if (space >= e.duration) break;
               } else space = 0;

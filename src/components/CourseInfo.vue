@@ -5,7 +5,7 @@
       <h2>
         {{course.courseId}} : {{course.title}} &nbsp;
         <span
-          @click="addSelected(course.courseId)"
+          @click="addSelected(id)"
           class="add"
         >ADD to List</span>&nbsp;
         <span @click="$emit(`colapse`)" class="add">Close</span>
