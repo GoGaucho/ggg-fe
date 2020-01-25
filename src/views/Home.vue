@@ -1,11 +1,12 @@
 <template>
   <div class="home">
-    <FindCourse />
+    <FindCourse :fixed="[]" />
     <SelectedList />
   </div>
 </template>
 
 <script>
+import { mapMutations } from "vuex";
 import SelectedList from "@/components/SelectedList.vue";
 import FindCourse from "@/components/FindCourse.vue";
 
@@ -17,6 +18,12 @@ export default {
   },
   data() {
     return {};
+  },
+  methods: {
+    ...mapMutations(["setSelectorMode"])
+  },
+  mounted() {
+    this.setSelectorMode("");
   }
 };
 </script>

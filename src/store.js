@@ -23,7 +23,8 @@ export default new Vuex.Store({
       timerange: [new Date(0, 0, 0, 8, 0), new Date(0, 0, 0, 22, 0)],
       break: 10,
     }),
-
+    loadingMode: "",
+    loadingList: { list: [], ge: [] },
     courseList: { list: [], ge: [] },
     checkedEnrollCode: [],
     course: null,
@@ -59,7 +60,20 @@ export default new Vuex.Store({
     },
 
     setCourseList(state, list) {
+      if (state.loadingMode.length) state.loadingList = { list: list.list, ge: list.ge };
+      else state.courseList = { list: list.list, ge: list.ge };
+    },
+
+    setResultList(state, list) {
       state.courseList = { list: list.list, ge: list.ge };
+    },
+
+    pushResultList(state, item) {
+      state.courseList.list.push(item);
+    },
+
+    setSelectorMode(state, mode) {
+      state.loadingMode = mode;
     },
 
     setCourse(state, course) {

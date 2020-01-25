@@ -1,26 +1,27 @@
 <template>
   <div class="addmore">
-    <Selector :fixed="['quarter']" />
+    <FindCourse :fixed="['quarter']" />
+
     <div class="queue">
       <strong>Loading Queue</strong>
       <div v-if="queue.length">
-        <p v-for="c in queue" :key="c">{{c}}</p>
+        <p v-for="c in queue" :key="c.id">{{c.id}}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mapState } from "vuex";
+import { mapState, mapMutations } from "vuex";
 import { convertCourses } from "./Processing";
-import Selector from "@/components/Selector.vue";
+import FindCourse from "@/components/FindCourse.vue";
 
 const delay = 10;
 
 export default {
   name: "AddMore",
   components: {
-    Selector
+    FindCourse
   },
   data() {
     return {
@@ -29,18 +30,21 @@ export default {
       courseStore: {}
     };
   },
+  mounted() {
+    this.setSelectorMode("fit");
+  },
   computed: {
-    ...mapState(["courseList", "results", "courseDetails", "quarter"])
+    ...mapState(["loadingList", "results", "courseDetails", "quarter"])
   },
   watch: {
-    courseList: function() {
-      if (!this.courseList) return;
-      const list = this.courseList.list;
+    loadingList: function() {
+      if (!this.loadingList) return;
+      const list = this.loadingList.list;
+      this.setResultList({ list: [], ge: this.loadingList.ge });
       if (!list || !list.length) return;
       if (this.processor != null) this.processor.kill = true;
       this.processor = {
-        queue: (this.queue = list.map(e => e.id)),
-        result: [],
+        queue: (this.queue = list),
         data: {},
         kill: false,
         error: null
@@ -49,17 +53,20 @@ export default {
     }
   },
   methods: {
+    ...mapMutations(["setSelectorMode", "setResultList", "pushResultList"]),
+
     process: async function(proc) {
       console.log("process begin: ");
       while (!proc.kill && proc.queue.length) {
-        const cur = proc.queue[0];
+        const item = proc.queue[0];
+        const cur = item.id;
         console.log(cur);
         const resp = await this.loadCourse(proc, cur);
         if (proc.kill) break;
         proc.data[cur] = resp;
         proc.queue.splice(0, 1);
         await this.evalCourse(proc, cur);
-        proc.result.push(cur);
+        this.pushResultList(item);
         await new Promise(res => setTimeout(res, delay));
       }
       if (this.processor == proc) this.processor = null;
@@ -92,6 +99,10 @@ export default {
 
     evalCourse: function(proc, id) {
       //TODO
+    },
+
+    choose: function(c) {
+      //TODO
     }
   }
 };
@@ -110,8 +121,21 @@ div.addmore {
   background-color: #eee;
 }
 
-div.selector {
+div.courses {
+  position: relative;
   width: 60%;
+  max-width: 900px;
+  min-width: 630px;
+  min-height: calc(100vh - 150px);
+
+  margin: 20px;
+  padding: 10px 20px;
+
+  border-radius: 5px;
+  text-align: left;
+
+  box-shadow: 2px 2px 5px #999;
+  background-color: #fff;
 }
 
 div.queue {
@@ -127,5 +151,54 @@ div.queue {
   border-radius: 5px;
   box-shadow: 2px 2px 5px #999;
   background-color: #fff;
+}
+
+div.clist {
+  width: calc(100% - 20px);
+  margin: 20px 0;
+  padding: 10px 20px;
+  text-align: left;
+  background-color: #fff;
+}
+
+div.course-card {
+  width: calc(100% - 40px);
+  margin: 10px 0;
+  padding: 10px 20px;
+  border-radius: 5px;
+  box-shadow: 1px 1px 2px #bbb;
+}
+
+div.row {
+  display: flex;
+  align-items: center;
+}
+div.whole {
+  justify-content: space-between;
+}
+div.left {
+  justify-content: flex-start;
+}
+div.right {
+  justify-content: flex-end;
+}
+
+h1,
+h3,
+h5 {
+  color: #036;
+  margin: 0px;
+}
+
+strong {
+  margin: 0 10px;
+  color: #036;
+}
+
+hr {
+  width: 80;
+  border: 1px solid;
+  border-color: #036;
+  border-radius: 1px;
 }
 </style>

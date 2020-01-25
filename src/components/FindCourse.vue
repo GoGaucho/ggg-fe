@@ -1,7 +1,7 @@
 <template>
   <div class="find-course">
     <h1>Find Courses</h1>
-    <Selector :fixed="[]" />
+    <Selector :fixed="fixed" />
     <CourseList />
   </div>
 </template>
@@ -13,6 +13,7 @@ import CourseList from "@/components/CourseList.vue";
 
 export default {
   name: "FindCourse",
+  props: ["fixed"],
   components: {
     Selector,
     CourseList
