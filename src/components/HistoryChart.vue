@@ -146,6 +146,7 @@ export default {
     },
 
     showOnly(code) {
+      if (!this.res.datasets) return;
       if (this.focus == code) this.focus = "";
       else this.focus = code;
       this.updateData(false);

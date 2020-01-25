@@ -49,7 +49,7 @@ export default {
     TimeTable,
     HistoryChart
   },
-  props: ["id"],
+  props: ["id", "allowed"],
   data() {
     return {
       loading: false,
@@ -159,6 +159,22 @@ export default {
         }
       }
       if (res.length > 0) ress.push({ ses: ses, res: res });
+
+      if (this.allowed) {
+        for (var ires of ress) {
+          for (var lec of ires.res) {
+            let disa = !this.allowed.includes(lec.enrollCode);
+            for (var sec of lec.children) {
+              sec.conflict = sec.disabled = !this.allowed.includes(
+                sec.enrollCode
+              );
+              disa &= sec.conflict;
+            }
+            lec.conflict = lec.disabled = disa;
+          }
+        }
+      }
+
       this.ress = ress;
 
       this.codes = this.ress

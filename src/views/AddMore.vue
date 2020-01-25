@@ -1,13 +1,18 @@
 <template>
   <div class="addmore">
-    <FindCourse :fixed="['quarter']" />
-
     <div class="queue">
-      <strong>Loading Queue</strong>
+      <el-button @click="$router.push({name: 'schedule'})">Back</el-button>
+      <h2 class="queue">Loading Queue</h2>
       <div v-if="queue.length">
         <p v-for="c in queue" :key="c.id">{{c.id}}</p>
       </div>
+      <hr class="queue" style="border: 2px solid;width:100%;" />
+      <h2 class="queue">Conflict List</h2>
+      <div v-if="confl.length">
+        <p v-for="c in confl" :key="c.id">{{c.id}}</p>
+      </div>
     </div>
+    <FindCourse :fixed="['quarter']" />
   </div>
 </template>
 
@@ -26,6 +31,7 @@ function conflict(ps0, ps1) {
   }
   const ans = [];
   ps0.forEach(pl0 => {
+    if (!pl0.periods.length) return;
     for (var pl1 of ps1)
       if (!conf0(pl0.periods, pl1)) {
         ans.push(pl0.enrollCode);
@@ -44,6 +50,7 @@ export default {
     return {
       processor: null,
       queue: [],
+      confl: [],
       courseStore: {}
     };
   },
@@ -51,7 +58,13 @@ export default {
     this.setSelectorMode("fit");
   },
   computed: {
-    ...mapState(["loadingList", "results", "courseDetails", "quarter"])
+    ...mapState([
+      "loadingList",
+      "results",
+      "courseDetails",
+      "quarter",
+      "selected"
+    ])
   },
   watch: {
     loadingList: function() {
@@ -62,11 +75,15 @@ export default {
       if (this.processor != null) this.processor.kill = true;
       this.processor = {
         queue: (this.queue = list),
+        confl: (this.confl = []),
         data: {},
         kill: false,
         error: null
       };
       this.process(this.processor);
+    },
+    selected: function() {
+      this.$router.push({ name: "planner" });
     }
   },
   methods: {
@@ -84,7 +101,7 @@ export default {
         if (avail.length) {
           item.avail = avail;
           this.pushResultList(item);
-        }
+        } else proc.confl.push(item);
         await new Promise(res => setTimeout(res, delay));
       }
       if (this.processor == proc) this.processor = null;
@@ -139,7 +156,7 @@ div.addmore {
 }
 
 div.queue {
-  width: 120px;
+  width: 200px;
   height: auto;
   min-height: 280px;
   margin: 20px;
@@ -151,6 +168,12 @@ div.queue {
   border-radius: 5px;
   box-shadow: 2px 2px 5px #999;
   background-color: #fff;
+}
+
+hr.queue,
+h2.queue {
+  margin: 10px 0;
+  color: #036;
 }
 
 strong {

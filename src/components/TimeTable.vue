@@ -41,8 +41,16 @@
           </el-popover>
         </template>
       </el-table-column>
-      <el-table-column prop="days" label="Days" width="70" align="center" />
-      <el-table-column prop="time" label="Time" width="110" align="center" />
+      <el-table-column prop="days" label="Days" width="70" align="center">
+        <template slot-scope="scope">
+          <div :style="scope.row.conflict?'color:red':'color:black'">{{scope.row.days}}</div>
+        </template>
+      </el-table-column>
+      <el-table-column prop="time" label="Time" width="110" align="center">
+        <template slot-scope="scope">
+          <div :style="scope.row.conflict?'color:red':'color:black'">{{scope.row.time}}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="location" label="Location" align="center" />
       <el-table-column prop="space" label="Space" width="65" align="center" />
       <el-table-column prop="max" label="Max" width="50" align="center" />
