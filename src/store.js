@@ -17,7 +17,7 @@ const init = (key, def) => {
 export default new Vuex.Store({
   state: {
     quarter: init("quarter", ""),
-    selected: init("selected", []),
+    selected: init(`${init("quarter", "")}-selected`, []),
     events: init("events", []),
     limit: init("limit", {
       timerange: [new Date(0, 0, 0, 8, 0), new Date(0, 0, 0, 22, 0)],
@@ -34,7 +34,7 @@ export default new Vuex.Store({
     setQuarter(state, quarter) {
       if (state.quarter != quarter) {
         state.selected = [];
-        localStorage.selected = JSON.stringify(state.selected);
+        state.selected = init(`${quarter}-selected`, []);
       }
       state.quarter = quarter;
 
@@ -46,8 +46,7 @@ export default new Vuex.Store({
         if (state.selected[i] === course) return;
       }
       state.selected.push(course);
-
-      localStorage.selected = JSON.stringify(state.selected);
+      localStorage[`${state.quarter}-selected`] = JSON.stringify(state.selected);
     },
 
     removeSelected(state, course) {
@@ -56,8 +55,7 @@ export default new Vuex.Store({
           state.selected.splice(i, 1);
         }
       }
-
-      localStorage.selected = JSON.stringify(state.selected);
+      localStorage[`${state.quarter}-selected`] = JSON.stringify(state.selected);
     },
 
     setCourseList(state, list) {
@@ -83,7 +81,6 @@ export default new Vuex.Store({
           state.events.splice(i, 1);
         }
       }
-
       localStorage.events = JSON.stringify(state.events);
     },
 
