@@ -5,7 +5,7 @@
       <h2>
         {{course.courseId}} : {{course.title}} &nbsp;
         <span
-          @click="addSelected(course.courseId.replace(/\s*/g,''))"
+          @click="addSelected(id)"
           class="add"
         >ADD to List</span>&nbsp;
         <span @click="$emit(`colapse`)" class="add">Close</span>
@@ -28,8 +28,12 @@
           <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
         </el-collapse-item>
       </el-collapse>
-
-      <TimeTable v-if="res" v-bind:res="res" @click-row="clickrow" @click-exp="clickexp" />
+      <template v-if="ress">
+        <div v-for="res in ress" v-bind:key="res.ses">
+          <h3 v-if="res.ses.length">Session {{res.ses}}</h3>
+          <TimeTable v-bind:res="res.res" @click-row="clickrow" @click-exp="clickexp" />
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -49,9 +53,10 @@ export default {
   data() {
     return {
       loading: false,
-      res: [],
+      ress: [],
       codes: [],
       disables: [],
+      rate: {},
       course: null,
       gradingOption: "",
       units: "",
@@ -83,15 +88,26 @@ export default {
         })
         .catch(error => {
           this.loading = false;
+          console.log(error);
           swal("ERROR", "Network Error", "error");
         });
     },
 
     getData() {
       const c = this.course;
+      let ress = [];
       let res = [];
+      let ses = "";
       for (let i in c.classSections) {
         let s = c.classSections[i];
+        if (s.session) {
+          if (ses == "") ses = s.session.charAt(5);
+          else if (ses != s.session.charAt(5)) {
+            ress.push({ ses: ses, res: res });
+            res = [];
+            ses = "";
+          }
+        }
         let ss = {};
         ss.enrollCode = s.enrollCode;
         ss.disabled = s.courseCancelled || s.classClosed;
@@ -135,18 +151,21 @@ export default {
           // process lecture/section
           ss.children = [];
           ss.status = "lecture";
+          ss.rate = "loading...";
           res.push(ss);
         } else {
           ss.status = "section";
           res[res.length - 1].children.push(ss);
         }
       }
-      this.res = res;
+      if (res.length > 0) ress.push({ ses: ses, res: res });
+      this.ress = ress;
 
-      this.codes = this.res.map(e => [
-        e.enrollCode,
-        e.children.map(x => x.enrollCode)
-      ]);
+      this.codes = this.ress
+        .map(res =>
+          res.res.map(e => [e.enrollCode, e.children.map(x => x.enrollCode)])
+        )
+        .flat();
 
       this.gradingOption = (a =>
         !a ? "Optional" : a == "L" ? "Letter" : "Pass / No Pass")(
@@ -163,6 +182,59 @@ export default {
           : ge
               .map(e => `${e.geCode}(${e.geCollege})`.replace(/\s/g, ""))
               .join(",    "))(c.generalEducation);
+      this.getProfRatings();
+    },
+
+    getProfRatings: async function() {
+      const rater = (lec, rs) => {
+        rs = rs.filter(r => r.rate || r.diff);
+        if (!rs || rs.length == 0) {
+          lec.rate = "not found";
+          return;
+        }
+        if (rs.length > 1) {
+          lec.rate = "multiple...";
+          rs.forEach(r => {
+            if (!r.rate) r.rate = "X";
+            if (!r.diff) r.diff = "X";
+          });
+          lec.rateToolTip = {
+            data: rs,
+            msg: "Multiple profs with this name found"
+          };
+          return;
+        }
+        const r = rs[0];
+        const rr = r.rate ? r.rate : "X";
+        const rd = r.diff ? r.diff : "X";
+        lec.rate = `${rr}/${rd}`;
+        lec.rateToolTip = {
+          msg: `Name: ${r.name}, Deptartment: ${r.dept}`,
+          link: r.rmpid
+        };
+      };
+      for (let res of this.ress) {
+        for (let lec of res.res) {
+          if (lec.instructor && lec.instructor != "T.B.A") {
+            if (this.rate[lec.instructor] === undefined) {
+              let resp = null;
+              try {
+                resp = await axios({
+                  method: "get",
+                  url: `/api/rmp?prof=${lec.instructor}`
+                });
+              } catch (error) {
+                console.log(error);
+              }
+              if (resp) {
+                const r = resp.data;
+                this.rate[lec.instructor] = r ? r : null;
+                rater(lec, r);
+              }
+            } else rater(lec, this.rate[lec.instructor]);
+          } else lec.rate = "";
+        }
+      }
     },
 
     loadHistory() {

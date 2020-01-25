@@ -4,6 +4,14 @@
       <div class="row">
         <h1>Weekly View</h1>
         <el-button @click="$router.push({name: 'planner'})">Back</el-button>
+        <div v-if="quarter.charAt(4)=='3'">
+          <el-checkbox-group v-model="seleSession" @change="setSession()">
+            <el-checkbox-button label="1-3"></el-checkbox-button>
+            <el-checkbox-button label="4-6"></el-checkbox-button>
+            <el-checkbox-button label="7-9"></el-checkbox-button>
+            <el-checkbox-button label="10-12"></el-checkbox-button>
+          </el-checkbox-group>
+        </div>
       </div>
       <div class="row">
         <p v-if="dispersed" style="margin-right: 10px;">group results for: {{dispersed}}</p>
@@ -17,21 +25,28 @@
       </div>
     </div>
     <div class="table">
-      <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
+      <template v-bind="days">
+        <div v-for="d in dayNums" :style="headerStyle(d)" class="card" v-bind:key="d">{{days[d]}}</div>
+      </template>
       <template v-for="c in getPeriods(result)">
         <el-tooltip v-bind:key="c.key" effect="light" :open-delay="300">
           <div class="tooltip" slot="content">
             <p v-for="tool in getToolTip(c)" v-bind:key="c.key+'-'+tool">{{tool}}</p>
           </div>
           <div class="card" :style="cardStyle(c.id, c.p)" @click="disperse(c.id)">
-            <div class="cardrow">
-              <div class="incard cardl">{{c.id + c.code}}</div>
-              <div class="incard cardr">{{range2time(c.p)}}</div>
-            </div>
-            <div class="cardrow">
-              <div class="incard cardl">{{c.p[2]}}</div>
-              <div class="incard cardr">{{c.ins}}</div>
-            </div>
+            <template v-if="seleSession.length<2">
+              <div class="cardrow">
+                <div class="incard cardl">{{c.id + c.code}}</div>
+                <div class="incard cardr">{{range2time(c.p)}}</div>
+              </div>
+              <div class="cardrow">
+                <div class="incard cardl">{{c.p[2]}}</div>
+                <div class="incard cardr">{{c.ins}}</div>
+              </div>
+            </template>
+            <template v-if="seleSession.length>=2">
+              <div>{{c.id + c.code}}</div>
+            </template>
           </div>
         </el-tooltip>
       </template>
@@ -58,8 +73,8 @@ export default {
       processedResults: null,
       dispersed: null,
       result: [],
-      dayNums: [1, 2, 3, 4, 5],
-      days: ["", "Mon", "Tue", "Wed", "Thr", "Fri"],
+      dayNums: [0, 1, 2, 3, 4],
+      days: ["Mon", "Tue", "Wed", "Thr", "Fri"],
       colors: [
         "#fff1f0",
         "#f9f0ff",
@@ -70,7 +85,8 @@ export default {
         "#fff0f6"
       ],
       dispersedColor: "#ffffff",
-      colorMap: []
+      colorMap: [],
+      seleSession: ["1-3"]
     };
   },
   mounted() {
@@ -98,6 +114,20 @@ export default {
       this.I = String(I);
       this.result = this.processedResults[I];
       this.$forceUpdate();
+    },
+
+    setSession: function(i) {
+      this.seleSession.sort((a, b) =>
+        a.length < b.length
+          ? -1
+          : a.length > b.length
+          ? 1
+          : a.charAt(0) - b.charAt(0)
+      );
+      if (this.seleSession.length > 1) this.days = [...this.seleSession];
+      else this.days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+      this.dayNums = [];
+      for (var i = 0; i < this.days.length; i++) this.dayNums.push(i);
     },
 
     disperse: function(c) {
@@ -181,6 +211,13 @@ export default {
     getToolTip(c) {
       let ans = [];
 
+      if (this.seleSession.length > 1) {
+        const lect = c.id;
+        ans.push(`Course: ${c.id + c.code}`);
+        ans.push(`Time: ${this.range2time(c.p)}`);
+        ans.push(`Location: ${c.p[2]}`);
+      }
+
       const getSpace = (e, sec = this.courseDetails.map[e]) =>
         sec.maxEnroll - sec.enrolledTotal;
 
@@ -224,19 +261,37 @@ export default {
       let res = "";
       res += "height: 15px;";
       res += "top: -15px;";
-      res += "left: " + 20 * (dayNum - 1) + "%;";
+      res += "left: " + ((100 / this.days.length) * dayNum - 1) + "%;";
+      res += "width: " + (100 / this.days.length - 2) + "%;";
       return res;
     },
 
     cardStyle: function(title, range) {
       let res = "";
-      let day = Math.floor(range[0] / 1440) + 1;
+      let sess = this.seleSession;
+      let tots = Math.max(1, sess.length);
+      let session = Math.floor(range[0] / 1440 / 5);
+      let sesStr = session * 3 + 1 + "-" + (session * 3 + 3);
+      let sesInd = sess.indexOf(sesStr);
+      let day = (Math.floor(range[0] / 1440) % 5) + 1;
       let begin = range[0] % 1440;
       let end = range[1] % 1440;
+      let disp = this.quarter.charAt(4) != "3" || sesInd >= 0;
       res += "height: " + (100 / (1440 - 480)) * (end - begin) + "%;";
       res += "top: " + (10 + (100 / (1440 - 480)) * (begin - 480)) + "%;";
-      res += "left: " + 20 * (day - 1) + "%;";
+      res += "display: " + (disp ? "flex;" : "none;");
       res += "background-color: " + this.colorMap[title] + ";";
+      if (tots == 1) {
+        res += "border-radius: 5px;";
+        res += "width: 18%;";
+        res += "left: " + 20 * (day - 1) + "%;";
+        res += "transition: all 0.3s ease;";
+      } else {
+        const wid = 20 / tots;
+        res += "border-radius: 0px;";
+        res += "width: " + 19 / tots + "%;";
+        res += "left: " + (wid * (day - 1) + wid * 5 * sesInd) + "%;";
+      }
       return res;
     },
 
@@ -292,13 +347,10 @@ div.table {
 div.card {
   position: absolute;
   width: 18%;
-
   border-radius: 5px;
   font-size: 0.7rem;
-
   box-shadow: 1px 1px 2px #999;
   background-color: #fff;
-  transition: all 0.3s ease;
 
   display: flex;
   flex-direction: column;

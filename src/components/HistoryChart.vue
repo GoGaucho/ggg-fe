@@ -33,22 +33,26 @@ export default {
   methods: {
     async loadHistory() {
       this.loading = true;
+      let resp = null;
       try {
-        const resp = await axios({
+        resp = await axios({
           method: "post",
           url: `/api/sche/getHistories?q=${this.quarter}`,
           data: this.codes.flat(2)
         });
         this.loading = false;
-        this.processData(resp.data);
       } catch (error) {
         this.loading = false;
         console.log(error);
         swal("ERROR", "Server Response Error", "error");
       }
+      if (resp) this.processData(resp.data);
     },
 
     processData(data) {
+      let sum = 0;
+      data.forEach(x => (sum += x.data.length));
+      if (sum == 0) return;
       let gmin = data[0].data[0].date;
       let gmax = data[0].data[0].date;
       for (let e of data) {

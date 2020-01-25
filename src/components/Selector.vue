@@ -25,8 +25,18 @@
 
     <div v-if="by == 'Search' && options.quarter.length" class="row">
       <strong>General Search:</strong>
-      <el-input style="width: 50%; margin-right: 10px;" v-model="query.search" @keyup.enter.native="getList('course')"></el-input>
-      <el-button type="primary" @click="getList('course')">Search</el-button>
+      <el-input
+        style="width: 50%; margin-right: 10px;"
+        v-model="query.search"
+        @keyup.enter.native="getList('course')"
+      ></el-input>
+      <el-button type="primary" @click="getList('course')">Search</el-button>&nbsp;
+      <el-checkbox
+        v-if="by=='Search'"
+        v-model="query.titleOnly"
+        label="Match Title Only"
+        @change="change('filter')"
+      />
     </div>
 
     <div v-if="by == 'Department'" class="row">
@@ -78,6 +88,29 @@
         </el-select>
       </template>
     </div>
+    <div class="row">
+      <el-checkbox-group v-model="checkList" @change="change('filter')">
+        <el-checkbox-button label="Lower" />
+        <el-checkbox-button label="Upper" />
+        <el-checkbox-button label="Grad" />
+        <el-checkbox-button label="Postgrad" />
+      </el-checkbox-group>
+    </div>
+    <div v-if="by=='GE' && options.GE.length && query.GE.length>1" class="row">
+      <strong>Must includes:</strong>
+      <el-checkbox-group v-model="query.forcedGE" @change="change('filter')">
+        <el-checkbox-button v-for="ge in query.GE" :key="'force-'+ge" :label="ge" />
+      </el-checkbox-group>
+    </div>
+    <div v-if="by=='GE' && options.GE.length && query.GE.length>1" class="row" style="width:100%;">
+      <strong>Min GE:</strong>
+      <el-input-number
+        v-model="query.minGE"
+        :min="0"
+        :max="query.GE.length"
+        @change="change('filter')"
+      />
+    </div>
   </div>
 </template>
 
@@ -99,14 +132,20 @@ export default {
         search: "",
         department: "",
         college: "",
-        GE: []
+        GE: [],
+        titleOnly: false,
+        forcedGE: [],
+        minGE: 1
       },
       options: {
         quarter: [],
         department: [],
         college: [],
         GE: []
-      }
+      },
+      tmplist: [],
+      tmpge: [],
+      checkList: ["Lower", "Upper"]
     };
   },
   mounted() {
@@ -134,21 +173,18 @@ export default {
           if (this.by == "Department") this.getList("department");
         }
 
-        this.setCourseList({ list: [], ge: [] });
+        this.setList([], []);
       }
 
       if (key == "quarter") {
         this.setQuarter(this.query.quarter);
-
-        this.query.department = "";
-        this.query.college = "";
         this.options.department = [];
         this.options.college = [];
         this.options.GE = [];
         if (this.by == "GE") this.getList("college");
         if (this.by == "Department") this.getList("department");
 
-        this.setCourseList({ list: [], ge: [] });
+        this.setList([], []);
       }
 
       if (key == "department") {
@@ -156,16 +192,79 @@ export default {
       }
 
       if (key == "college") {
-        this.query.GE = "";
+        this.query.GE = [];
         this.options.GE = [];
         this.getList("GE");
 
-        this.setCourseList({ list: [], ge: [] });
+        this.setList([], []);
       }
 
       if (key == "GE") {
+        this.query.forcedGE = this.query.forcedGE.filter(
+          e => this.query.GE.indexOf(e) >= 0
+        );
+        this.query.minGE = Math.min(this.query.minGE, this.query.GE.length);
         if (this.query.GE.length) this.getList("course");
       }
+
+      if (key == "filter") {
+        this.setList(this.tmplist, this.tmpge);
+      }
+    },
+
+    setList(list, ge) {
+      this.tmplist = list;
+      this.tmpge = ge;
+      this.setCourseList({ list: this.divFilt(list), ge: ge });
+    },
+
+    divFilt: function(list) {
+      var f0 = str => {
+        for (var i = 0; i < str.length; i++) {
+          const ch = str.charAt(i);
+          if (ch >= "0" && ch <= "9") return i;
+        }
+        return -1;
+      };
+
+      var f1 = (str, i0) => {
+        for (var i = i0; i < str.length; i++) {
+          const ch = str.charAt(i);
+          if (ch < "0" || ch > "9") return i;
+        }
+        return str.length;
+      };
+
+      var f2 = str => {
+        const i0 = f0(str);
+        if (i0 < 0) return 0;
+        const i1 = f1(str, i0);
+        const sub = +str.substring(i0, i1);
+        return Math.floor(sub / 100);
+      };
+
+      var f3 = e => {
+        if (
+          this.by == "Search" &&
+          this.query.titleOnly &&
+          !e.id.match(this.query.search)
+        )
+          return false;
+
+        if (this.by == "GE") {
+          if (e.sum < this.query.minGE) return false;
+          for (var fge of this.query.forcedGE) if (!e[fge]) return false;
+        }
+
+        const val = f2(e.id);
+        if (val == 0 && this.checkList.indexOf("Lower") >= 0) return true;
+        if (val == 1 && this.checkList.indexOf("Upper") >= 0) return true;
+        if (val == 2 && this.checkList.indexOf("Grad") >= 0) return true;
+        if (val == 5 && this.checkList.indexOf("Postgrad") >= 0) return true;
+        return false;
+      };
+
+      return list.filter(e => f3(e));
     },
 
     getList: function(key) {
@@ -199,10 +298,19 @@ export default {
               this.options.department.push({ name: d, key: d });
             }
             this.options.department.sort();
+            let finder = 0;
+            for (var dept of this.options.department)
+              if (dept.name == this.query.department) {
+                finder++;
+                break;
+              }
+            if (finder == 0) this.query.department = "";
+            else this.getList("course");
             this.loading = false;
           })
           .catch(error => {
             this.loading = false;
+            console.log(error);
             swal("ERROR", "Network Error", "error");
           });
       }
@@ -212,9 +320,13 @@ export default {
           .then(resp => {
             this.options.college = [];
             GEColl = resp.data;
+            let finder = 0;
             for (let c of resp.data) {
               this.options.college.push({ name: c.col, key: c.col });
+              if (c.col == this.query.college) finder++;
             }
+            if (finder == 0) this.query.college = "";
+            else this.getList("GE");
             this.loading = false;
           })
           .catch(error => {
@@ -234,6 +346,10 @@ export default {
           this.options.GE.push({ name: GECode[i].code, key: GECode[i].code });
         }
         this.options.GE.sort();
+        this.query.GE = this.query.GE.filter(ge =>
+          this.options.GE.reduce((b, p) => b || p.name == ge, false)
+        );
+        if (this.query.GE.length) this.getList("course");
         this.loading = false;
       }
       if (key == "course" && this.by == "Search") {
@@ -246,8 +362,8 @@ export default {
           })
           .then(resp => {
             let list = [];
-            for (let c of resp.data) list.push({id: c});
-            this.setCourseList({ list: list, ge: [] });
+            for (let c of resp.data) list.push({ id: c });
+            this.setList(list, []);
             if (!resp.data.length) {
               swal(
                 "No Course Found!",
@@ -275,7 +391,7 @@ export default {
             const list = [];
             for (let c of resp.data) list.push({ id: c.id });
             list.sort();
-            this.setCourseList({ list: list, ge: [] });
+            this.setList(list, []);
             this.loading = false;
           })
           .catch(error => {
@@ -293,14 +409,16 @@ export default {
                 list[c] = { id: c, sum: 0 };
                 clist.push(c);
               }
-              list[c][code.code] = "X";
-              list[c].sum++;
+              if (list[c][code.code] != "X") {
+                list[c][code.code] = "X";
+                list[c].sum++;
+              }
             });
         });
         let xlist = clist.map(e => list[e]);
         xlist.sort((a, b) => b.sum - a.sum);
 
-        this.setCourseList({ list: xlist, ge: this.query.GE });
+        this.setList(xlist, this.query.GE);
 
         this.loading = false;
       }

@@ -46,7 +46,7 @@ let skipper = 10;
 let lastTime = 0;
 
 let timegrid = null;
-let timeset = [0, 7200];
+let timeset = [0, 14400, 21600, 28800];
 
 function getTime(a) {
   return timegrid[a >> 4] & (1 << (a & 0xf));
@@ -65,7 +65,7 @@ function fillTimeBlock(ps, v) {
       else timegrid[i >> 4] &= 0xffff - (1 << (i & 0xf));
 }
 
-function daytime2num(day, timeString) {
+function daytime2num(day, timeString, ses) {
   if (timeString.Format) timeString = timeString.Format("HH:mm");
   let dayNum = 0;
   if (day == "T") dayNum = 1;
@@ -74,24 +74,40 @@ function daytime2num(day, timeString) {
   if (day == "F") dayNum = 4;
   const h = +timeString.substr(0, 2);
   const m = +timeString.substr(3, 2);
-  const ans = (dayNum * 24 + h) * 60 + m;
+  var ans = (dayNum * 24 + h) * 60 + m;
+  if (ses) ans += 5 * 24 * 60 * ses;
   if (timeset.indexOf(ans) < 0) timeset.push(ans);
   return ans;
 }
 
-function getCoursePeriods(lec, sec) {
-  const periods = [];
+function getSession(ses) {
+  if (!ses) return [0];
+  if (ses == "A") return [0, 1];
+  if (ses == "B") return [2, 3];
+  if (ses == "C") return [0, 1, 2, 3];
+  if (ses == "D") return [0];
+  if (ses == "E") return [1];
+  if (ses == "F") return [2];
+  if (ses == "G") return [3];
+  return [0];
+}
 
+function getCoursePeriods(lec, sec) {
+  // TODO: multiplies to 4 sections
+  const periods = [];
   const adder = tls => {
     for (let tl of tls.timeLocations) {
+      if (tl.days == null) continue;
       const days = tl.days.replace(/\s*/g, "");
       const loc = `${tl.building} - ${tl.room}`;
-      for (let d of days)
-        periods.push([
-          daytime2num(d, tl.beginTime),
-          daytime2num(d, tl.endTime),
-          loc
-        ]);
+      const ses = getSession(tls.session ? tls.session.charAt(5) : null);
+      for (let s of ses)
+        for (let d of days)
+          periods.push([
+            daytime2num(d, tl.beginTime, s),
+            daytime2num(d, tl.endTime, s),
+            loc
+          ]);
     }
   };
 
@@ -106,6 +122,7 @@ export default {
   name: "Processing",
   data() {
     return {
+      summer: false,
       ready: false,
       calculating: false,
       numSolution: 0,
@@ -173,6 +190,7 @@ export default {
     ...mapMutations(["addResults", "clearResults", "setCourseDetail"]),
 
     process: async function() {
+      this.summer = this.quarter.charAt(4) == "3";
       this.tip = "Gathering Course Informations ...";
       await this.getCourseInfo();
       this.tip = "Solving The Ultimate Problem of the Universe ...";
@@ -255,10 +273,16 @@ export default {
       this.setCourseDetail(detail);
 
       // events
+
+      const sumf = e =>
+        (this.summer ? [0, 1, 2, 3] : [0])
+          .map(v => e.days.map(d => e.timerange.map(r => daytime2num(d, r, v))))
+          .flat();
+
       this.raw.events = this.events.map(e => ({
         title: e.name,
-        duration: e.duration / minblock,
-        periods: e.days.map(d => e.timerange.map(r => daytime2num(d, r)))
+        duration: e.duration,
+        periods: sumf(e)
       }));
     },
 
@@ -290,6 +314,8 @@ export default {
         for (let s of c)
           for (let p of s.periods)
             for (let i in p) p[i] = timeset.indexOf(p[i]);
+      for (let e of this.raw.events)
+        for (let p of e.periods) for (let i in p) p[i] = timeset.indexOf(p[i]);
     },
 
     dfs: async function(I) {
@@ -334,7 +360,7 @@ export default {
             let space = 0;
             if (cp[0] >= p[1] || cp[1] <= p[0]) continue;
             for (let i = p[0]; i < p[1]; i++) {
-              if (!getTime(i)) {
+              if ((cp[0] > i || cp[1] <= i) && !getTime(i)) {
                 space += timeset[i + 1] - timeset[i];
                 if (space >= e.duration) break;
               } else space = 0;
