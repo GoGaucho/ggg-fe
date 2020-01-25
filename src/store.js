@@ -28,7 +28,7 @@ export default new Vuex.Store({
     checkedEnrollCode: [],
     course: null,
     results: [],
-    courseDetails: { data: {}, map: {}, rev: {} }
+    courseDetails: { data: {}, map: {}, rev: {}, periods: {}, rev: {}, s2c: {} }
   },
   mutations: {
     setQuarter(state, quarter) {

@@ -3,7 +3,8 @@
     <div class="header">
       <div class="row">
         <h1>Weekly View</h1>
-        <el-button @click="$router.push({name: 'planner'})">Back</el-button>
+        <el-button @click="$router.push({name: 'planner'})">Back</el-button>&nbsp;
+        <el-button @click="$router.push({name: 'addmore'})">Add One More Course</el-button>&nbsp;
         <div v-if="quarter.charAt(4)=='3'">
           <el-checkbox-group v-model="seleSession" @change="setSession()">
             <el-checkbox-button label="1-3"></el-checkbox-button>
@@ -86,7 +87,7 @@ export default {
       ],
       dispersedColor: "#ffffff",
       colorMap: [],
-      seleSession: ["1-3"]
+      seleSession: ["1-3", "4-6", "7-9", "10-12"]
     };
   },
   mounted() {

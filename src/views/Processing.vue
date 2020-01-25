@@ -93,7 +93,6 @@ function getSession(ses) {
 }
 
 function getCoursePeriods(lec, sec) {
-  // TODO: multiplies to 4 sections
   const periods = [];
   const adder = tls => {
     for (let tl of tls.timeLocations) {
@@ -116,6 +115,71 @@ function getCoursePeriods(lec, sec) {
   if (!sec || !sec.timeLocations.length) return periods;
   adder(sec);
   return periods;
+}
+
+function courseToPeriods(id, detail, check) {
+  const map = { list: [], data: {} };
+  for (let code of detail.data[id].classSections) {
+    const sec = detail.map[code];
+    if (sec.section % 100 == 0) {
+      map.list.push(+sec.section);
+      map.data[+sec.section] = { code: code, sections: [] };
+    } else {
+      const lec = sec.section - (sec.section % 100);
+      map.data[lec].sections.push(code);
+    }
+  }
+  const course = [];
+  for (let sect of map.list) {
+    const lec = map.data[sect];
+    const lecData = detail.map[lec.code];
+    if (!lec.sections.length) {
+      const ps = getCoursePeriods(lecData, null);
+      detail.periods[lec.code] = ps;
+      if (check.includes(lec.code)) {
+        const px = ps.map(e => [e[0], e[1]]);
+        course.push({ enrollCode: lec.code, periods: px });
+      }
+    } else {
+      detail.s2c[id][sect] = lec.code;
+      lec.sections.forEach(sec => {
+        const secData = detail.map[sec];
+        const ps = getCoursePeriods(lecData, secData);
+        detail.periods[sec] = ps;
+        if (check.includes(sec)) {
+          const px = ps.map(e => [e[0], e[1]]);
+          course.push({ enrollCode: sec, periods: px });
+        }
+      });
+    }
+  }
+  return course;
+}
+
+export function convertCourses(sele, data, check) {
+  const detail = { data: {}, map: {}, rev: {}, s2c: {}, periods: {} };
+
+  // course detail
+  data.forEach(e => {
+    const id = e.courseId.replace(/\s*/g, "");
+    detail.s2c[id] = {};
+    detail.data[id] = e;
+    e.classSections = e.classSections.map(s => {
+      detail.map[s.enrollCode] = s;
+      detail.rev[s.enrollCode] = id;
+      return s.enrollCode;
+    });
+  });
+
+  const courses = [];
+
+  // courses
+  for (let id of sele) {
+    const course = courseToPeriods(id, detail, check);
+    courses.push(course);
+  }
+
+  return { courses: courses, detail: detail };
 }
 
 export default {
@@ -207,70 +271,17 @@ export default {
     },
 
     mapCourseDetail(data) {
-      const detail = { data: {}, map: {}, rev: {}, s2c: {}, periods: {} };
-
-      // course detail
-      data.forEach(e => {
-        const id = e.courseId.replace(/\s*/g, "");
-        detail.s2c[id] = {};
-        detail.data[id] = e;
-        e.classSections = e.classSections.map(s => {
-          detail.map[s.enrollCode] = s;
-          detail.rev[s.enrollCode] = id;
-          return s.enrollCode;
-        });
-      });
+      const res = convertCourses(this.selected, data, this.checkedEnrollCode);
+      this.setCourseDetail(res.detail);
 
       // raw
       this.raw = {
-        courses: [],
+        courses: res.courses,
         events: [],
         break: this.limit.break,
         begin: daytime2num("", this.limit.timerange[0]),
         end: daytime2num("", this.limit.timerange[1])
       };
-
-      // courses
-      for (let id of this.selected) {
-        const map = { list: [], data: {} };
-        for (let code of detail.data[id].classSections) {
-          const sec = detail.map[code];
-          if (sec.section % 100 == 0) {
-            map.list.push(+sec.section);
-            map.data[+sec.section] = { code: code, sections: [] };
-          } else {
-            const lec = sec.section - (sec.section % 100);
-            map.data[lec].sections.push(code);
-          }
-        }
-        const course = [];
-        for (let sect of map.list) {
-          const lec = map.data[sect];
-          const lecData = detail.map[lec.code];
-          if (!lec.sections.length) {
-            const ps = getCoursePeriods(lecData, null);
-            detail.periods[lec.code] = ps;
-            if (this.checkedEnrollCode.indexOf(lec.code) >= 0) {
-              const px = ps.map(e => [e[0], e[1]]);
-              course.push({ enrollCode: lec.code, periods: px });
-            }
-          } else {
-            detail.s2c[id][sect] = lec.code;
-            lec.sections.forEach(sec => {
-              const secData = detail.map[sec];
-              const ps = getCoursePeriods(lecData, secData);
-              detail.periods[sec] = ps;
-              if (this.checkedEnrollCode.indexOf(sec) >= 0) {
-                const px = ps.map(e => [e[0], e[1]]);
-                course.push({ enrollCode: sec, periods: px });
-              }
-            });
-          }
-        }
-        this.raw.courses.push(course);
-      }
-
-      this.setCourseDetail(detail);
 
       // events
 

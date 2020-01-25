@@ -2,7 +2,7 @@
   <div class="selector">
     <div class="loading" v-if="loading">Loading ...</div>
     <div class="row">
-      <template>
+      <template v-if="!fixed.includes('quarter')">
         <strong>Quarter:</strong>
         <el-select filterable @change="change('quarter')" v-model="query.quarter">
           <el-option
@@ -123,6 +123,7 @@ var season = ["", "Winter", "Spring", "Summer", "Fall"];
 
 export default {
   name: "Selector",
+  props: ["fixed"],
   data() {
     return {
       loading: false,

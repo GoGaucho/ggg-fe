@@ -31,6 +31,13 @@ export default new Router({
       component: function () {
         return import('./views/Schedule.vue')
       }
+    },
+    {
+      path: '/addmore',
+      name: 'addmore',
+      component: function () {
+        return import('./views/AddMore.vue')
+      }
     }
   ]
 })

@@ -1,7 +1,7 @@
 <template>
   <div class="find-course">
     <h1>Find Courses</h1>
-    <Selector />
+    <Selector :fixed="[]" />
     <CourseList />
   </div>
 </template>
