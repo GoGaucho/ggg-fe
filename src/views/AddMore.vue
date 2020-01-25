@@ -18,6 +18,23 @@ import FindCourse from "@/components/FindCourse.vue";
 
 const delay = 10;
 
+function conflict(ps0, ps1) {
+  function conf0(pl0, pl1) {
+    for (var p0 of pl0)
+      for (var p1 of pl1) if (p0[1] > p1[0] && p1[1] > p0[0]) return true;
+    return false;
+  }
+  const ans = [];
+  ps0.forEach(pl0 => {
+    for (var pl1 of ps1)
+      if (!conf0(pl0.periods, pl1)) {
+        ans.push(pl0.enrollCode);
+        return;
+      }
+  });
+  return ans;
+}
+
 export default {
   name: "AddMore",
   components: {
@@ -56,21 +73,21 @@ export default {
     ...mapMutations(["setSelectorMode", "setResultList", "pushResultList"]),
 
     process: async function(proc) {
-      console.log("process begin: ");
       while (!proc.kill && proc.queue.length) {
         const item = proc.queue[0];
         const cur = item.id;
-        console.log(cur);
         const resp = await this.loadCourse(proc, cur);
         if (proc.kill) break;
         proc.data[cur] = resp;
         proc.queue.splice(0, 1);
-        await this.evalCourse(proc, cur);
-        this.pushResultList(item);
+        const avail = await this.evalCourse(proc, cur);
+        if (avail.length) {
+          item.avail = avail;
+          this.pushResultList(item);
+        }
         await new Promise(res => setTimeout(res, delay));
       }
       if (this.processor == proc) this.processor = null;
-      console.log("process end");
     },
 
     loadCourse: async function(proc, id) {
@@ -98,11 +115,11 @@ export default {
     },
 
     evalCourse: function(proc, id) {
-      //TODO
-    },
-
-    choose: function(c) {
-      //TODO
+      const ps = this.courseStore[id].periods;
+      const rs = this.results.map(r =>
+        r.map(e => this.courseDetails.periods[e]).flat()
+      );
+      return conflict(ps, rs);
     }
   }
 };
@@ -121,23 +138,6 @@ div.addmore {
   background-color: #eee;
 }
 
-div.courses {
-  position: relative;
-  width: 60%;
-  max-width: 900px;
-  min-width: 630px;
-  min-height: calc(100vh - 150px);
-
-  margin: 20px;
-  padding: 10px 20px;
-
-  border-radius: 5px;
-  text-align: left;
-
-  box-shadow: 2px 2px 5px #999;
-  background-color: #fff;
-}
-
 div.queue {
   width: 120px;
   height: auto;
@@ -153,52 +153,8 @@ div.queue {
   background-color: #fff;
 }
 
-div.clist {
-  width: calc(100% - 20px);
-  margin: 20px 0;
-  padding: 10px 20px;
-  text-align: left;
-  background-color: #fff;
-}
-
-div.course-card {
-  width: calc(100% - 40px);
-  margin: 10px 0;
-  padding: 10px 20px;
-  border-radius: 5px;
-  box-shadow: 1px 1px 2px #bbb;
-}
-
-div.row {
-  display: flex;
-  align-items: center;
-}
-div.whole {
-  justify-content: space-between;
-}
-div.left {
-  justify-content: flex-start;
-}
-div.right {
-  justify-content: flex-end;
-}
-
-h1,
-h3,
-h5 {
-  color: #036;
-  margin: 0px;
-}
-
 strong {
   margin: 0 10px;
   color: #036;
-}
-
-hr {
-  width: 80;
-  border: 1px solid;
-  border-color: #036;
-  border-radius: 1px;
 }
 </style>

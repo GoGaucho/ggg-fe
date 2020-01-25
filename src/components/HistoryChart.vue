@@ -114,6 +114,7 @@ export default {
     },
 
     updateData(resetHidden) {
+      if (!this.res.datasets) return;
       const lecs = this.codes.map(e => e[0]);
 
       const getColor = e =>
@@ -152,6 +153,7 @@ export default {
     },
 
     expand(lec, secs, expanded) {
+      if (!this.res.datasets) return;
       secs.forEach(e => {
         const l = this.expandedList;
         if (expanded) l.push(e);
