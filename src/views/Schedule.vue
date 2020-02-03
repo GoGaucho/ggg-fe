@@ -87,10 +87,12 @@ export default {
       ],
       dispersedColor: "#ffffff",
       colorMap: [],
-      seleSession: ["1-3", "4-6", "7-9", "10-12"]
+      seleSession: ["1-3"]
     };
   },
   mounted() {
+    if (this.quarter.charAt(4) == "3")
+      this.seleSession = ["1-3", "4-6", "7-9", "10-12"];
     this.setList();
   },
   computed: {
