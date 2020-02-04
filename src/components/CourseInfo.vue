@@ -98,6 +98,14 @@ export default {
       let ress = [];
       let res = [];
       let ses = "";
+      c.classSections.sort((a, b) => {
+        if (a.session && b.session)
+          if (a.session < b.session) return -1;
+          else if (a.session > b.session) return 1;
+        if (a.section < b.section) return -1;
+        if (a.section > b.section) return 1;
+        return 0;
+      });
       for (let i in c.classSections) {
         let s = c.classSections[i];
         if (s.session) {
@@ -105,7 +113,7 @@ export default {
           else if (ses != s.session.charAt(5)) {
             ress.push({ ses: ses, res: res });
             res = [];
-            ses = "";
+            ses = s.session.charAt(5);
           }
         }
         let ss = {};
