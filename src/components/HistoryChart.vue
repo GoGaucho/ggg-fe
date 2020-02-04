@@ -234,7 +234,12 @@ export default {
   },
   watch: {
     timerange: function() {
-      console.log(this.timerange);
+      const x = this.chart.options.scales.xAxes[0];
+      const beg = this.maxTime[0];
+      const f = i => new Date(((this.timerange[i] + beg) * 24 + 8) * 3600000);
+      x.ticks.min = f(0);
+      x.ticks.max = f(1);
+      this.chart.update();
     }
   }
 };
