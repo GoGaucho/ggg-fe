@@ -2,6 +2,13 @@
   <div class="history-chart">
     <div class="loading" v-if="loading">loading ...</div>
     <canvas id="history-canvas" />
+    <el-slider
+      v-if="maxTime&&timerange"
+      v-model="timerange"
+      range
+      :format-tooltip="getDate"
+      :max="maxTime[2]"
+    ></el-slider>
   </div>
 </template>
 
@@ -9,6 +16,41 @@
 <script>
 import { mapState, mapMutations } from "vuex";
 import Chart from "chart.js";
+
+var months = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec"
+];
+var passMap = {};
+
+async function getPassInfo(q) {
+  if (passMap[q]) return passMap[q];
+  try {
+    const data = (
+      await axios({
+        method: "get",
+        url: `/api/getQuarterInfo?q=${q}`
+      })
+    ).data[0];
+    const obj = [];
+    for (var i = 1; i <= 3; i++) obj.push(new Date(data[`pass${i}Begin`]));
+    passMap[q] = obj;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+  return passMap[q];
+}
 
 export default {
   name: "HistoryChart",
@@ -20,7 +62,10 @@ export default {
       data: null,
       expandedList: null,
       focus: null,
-      chart: null
+      chart: null,
+      timerange: null,
+      maxTime: null,
+      passtimes: null
     };
   },
   computed: {
@@ -46,7 +91,16 @@ export default {
         console.log(error);
         swal("ERROR", "Server Response Error", "error");
       }
-      if (resp) this.processData(resp.data);
+
+      const qinfo = await getPassInfo(this.quarter);
+      if (resp && qinfo) {
+        this.loadTimeLine(qinfo);
+        this.processData(resp.data);
+      }
+    },
+
+    loadTimeLine(qinfo) {
+      this.passtimes = qinfo;
     },
 
     processData(data) {
@@ -77,8 +131,17 @@ export default {
         e.data.sort((a, b) => a.date - b.date);
       }
       this.data = data;
+      const tmin = Math.floor(gmin / 86400);
+      const tmax = Math.floor(gmax / 86400);
+      this.maxTime = [tmin, tmax, tmax - tmin];
+      this.timerange = [0, this.maxTime[2]];
       this.generateData();
       this.putOnChart();
+    },
+
+    getDate(val) {
+      const d = new Date(((this.maxTime[0] + val) * 24 + 8) * 3600000);
+      return months[d.getMonth()] + d.Format(" d");
     },
 
     generateData() {
