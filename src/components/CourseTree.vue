@@ -4,6 +4,11 @@
     <p>Cancelled / closed / full sections and lectures are excluded by default</p>
     <p>Each course should have at least one lecture / section included</p>
     <br />
+    <el-row v-if="!loading" style="display:flex;">
+      <el-button @click="setAll(0)">Restore Default</el-button>
+      <el-button @click="setAll(1)">Select All</el-button>
+    </el-row>
+    <br />
     <div v-if="loading">Loading...</div>
     <el-tree
       :data="res"
@@ -40,11 +45,13 @@ export default {
       loading: false,
       courses: [],
       res: [],
-      checkList: []
+      checkList: [],
+      fullList: null,
+      defList: []
     };
   },
   computed: {
-    ...mapState(["selected", "quarter"])
+    ...mapState(["selected", "quarter", "inclPref"])
   },
   watch: {
     selected: function() {
@@ -71,7 +78,12 @@ export default {
     this.getCourseInfo();
   },
   methods: {
-    ...mapMutations(["addSelected", "setCourse", "setCheckedEC"]),
+    ...mapMutations([
+      "addSelected",
+      "setCourse",
+      "setCheckedEC",
+      "setInclPref"
+    ]),
 
     getCourseInfo: async function() {
       this.loading = true;
@@ -94,39 +106,47 @@ export default {
     },
 
     setSelection(a, data) {
-      this.saveSelection(data.checkedKeys, data.halfCheckedKeys);
+      this.saveSelection(data.checkedKeys);
     },
 
-    saveSelection(c, hc) {
+    saveSelection(c) {
+      const q = this.quarter;
       const filt = e => e.length == 5;
       const c0 = c.filter(filt);
       this.checkList = c0;
-      const c1 = hc.filter(filt);
-      this.setCheckedEC([...c0, ...c1]);
+      this.setCheckedEC([...c0]);
+
+      for (var c of this.res) {
+        const id = c.courseId;
+        const sele = c0.filter(e => this.fullList[id].includes(e));
+        const isDef = sele.reduce(
+          (b, e) => b && this.defList[id].includes(e),
+          this.defList[id].length == sele.length
+        );
+        if (isDef) this.setInclPref({ q: q, id: id, status: 0, codes: [] });
+        else this.setInclPref({ q: q, id: id, status: 1, codes: sele });
+      }
+      this.setInclPref({ q: q, save: true });
+    },
+
+    setAll(type) {
+      let list = [];
+      const base = type == 0 ? this.defList : this.fullList;
+      for (var e in base) list = list.concat(base[e]);
+      this.$refs.tree.setCheckedKeys(list);
+      this.saveSelection(list);
     },
 
     getData: function() {
       const list = [];
       const ce = [];
-      const check = l => {
-        let bool = false;
-        l.forEach(ss => {
-          if (!ss.children || !ss.children.length) {
-            if (!ss.disables && ss.space > 0) {
-              bool = true;
-              ce.push(ss.enrollCode);
-              this.checkList.push(ss.enrollCode);
-            }
-          } else {
-            bool = check(ss.children);
-            if (bool) ce.push(ss.enrollCode);
-          }
-        });
-        return bool;
-      };
-
+      const full = {};
+      const defList = {};
       for (let c of this.courses) {
         let res = [];
+        const id = c.courseId.replace(/\s*/g, "");
+        full[id] = [];
+        defList[id] = [];
         for (let i in c.classSections) {
           let s = c.classSections[i];
           let ss = {};
@@ -185,16 +205,46 @@ export default {
             res[res.length - 1].children.push(ss);
           }
         }
-        check(res);
-        list.push({
+        const cres = {
           status: "course",
-          enrollCode: c.courseId.replace(/\s*/g, "") + " - " + c.title,
-          courseId: c.courseId.replace(/\s*/g, ""),
+          enrollCode: id + " - " + c.title,
+          courseId: id,
           children: res
-        });
+        };
+        this.checkAll(full[id], cres);
+        this.checkDef(defList[id], cres);
+        this.checkAuto(ce, cres);
+        list.push(cres);
       }
       this.res = list;
+      this.checkList = ce;
+      this.fullList = full;
+      this.defList = defList;
       this.setCheckedEC(ce);
+    },
+
+    checkAuto(ce, l) {
+      this.setInclPref({ q: this.quarter });
+      const pref = this.inclPref[this.quarter][l.courseId];
+      if (!pref || !pref.status) this.checkDef(ce, l);
+      else for (var c of pref.codes) ce.push(c);
+    },
+
+    checkAll(ce, l) {
+      l.children.forEach(ss => {
+        if (!ss.children || !ss.children.length) ce.push(ss.enrollCode);
+        else this.checkAll(ce, ss);
+      });
+    },
+
+    checkDef(ce, l) {
+      l.children.forEach(ss => {
+        if (!ss.children || !ss.children.length) {
+          if (!ss.disables && ss.space > 0) {
+            ce.push(ss.enrollCode);
+          }
+        } else this.checkDef(ce, ss);
+      });
     },
 
     getStatus(s) {

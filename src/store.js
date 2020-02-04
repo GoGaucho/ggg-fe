@@ -23,6 +23,7 @@ export default new Vuex.Store({
       timerange: [new Date(0, 0, 0, 8, 0), new Date(0, 0, 0, 22, 0)],
       break: 10,
     }),
+    inclPref: init("inclPref", {}),
     loadingMode: "",
     loadingList: { list: [], ge: [] },
     courseList: { list: [], ge: [] },
@@ -118,6 +119,17 @@ export default new Vuex.Store({
 
     setCheckedEC(state, list) {
       state.checkedEnrollCode = list;
+    },
+
+    setInclPref(state, data) {
+      // status == 0: default
+      // status == 1: custom
+      if (data.q && !state.inclPref[data.q])
+        state.inclPref[data.q] = {};
+      if (data.id)
+        state.inclPref[data.q][data.id] = { status: data.status, codes: data.codes };
+      if (data.save)
+        localStorage.inclPref = JSON.stringify(state.inclPref);
     }
   },
   actions: {
