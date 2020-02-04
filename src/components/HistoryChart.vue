@@ -66,7 +66,7 @@ export default {
       chart: null,
       timerange: null,
       maxTime: null,
-      passtimes: null,
+      passtimes: null
     };
   },
   computed: {
@@ -95,11 +95,11 @@ export default {
 
       const qinfo = await getPassInfo(this.quarter);
       if (resp && qinfo) {
-        this.processData(resp.data,qinfo);
+        this.processData(resp.data, qinfo);
       }
     },
 
-    processData(data,qinfo) {
+    processData(data, qinfo) {
       let sum = 0;
       data.forEach(x => (sum += x.data.length));
       if (sum == 0) return;
@@ -129,13 +129,13 @@ export default {
       this.data = data;
       const tmin = Math.floor(gmin / 86400);
       const tmax = Math.floor(gmax / 86400);
-      const p2 = Math.floor(+qinfo[1]/86400000);
-      const p3 = Math.floor(+qinfo[2]/86400000);
+      const p2 = Math.floor(+qinfo[1] / 86400000);
+      const p3 = Math.floor(+qinfo[2] / 86400000);
       this.maxTime = [tmin, tmax, tmax - tmin];
       this.timerange = [0, this.maxTime[2]];
       const pts = {};
-      pts[p2-tmin]="pass 2";
-      pts[p3-tmin]="pass 3";
+      pts[p2 - tmin] = "pass 2";
+      pts[p3 - tmin] = "pass 3";
       this.passtimes = pts;
       this.generateData();
       this.putOnChart();
@@ -230,6 +230,11 @@ export default {
       });
       this.updateData(true);
       this.chart.update();
+    }
+  },
+  watch: {
+    timerange: function() {
+      console.log(this.timerange);
     }
   }
 };
