@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <FindCourse :fixed="[]" />
-    <SelectedList />
+    <SelectedList :showInfo="true" />
   </div>
 </template>
 

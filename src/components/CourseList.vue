@@ -1,7 +1,12 @@
 <template>
   <div class="course-list">
     <div v-for="c in courseList.list" :key="c.id" class="course-card">
-      <CourseInfo v-if="expanded == c.id" :id="c.id" :allowed="c.avail" @colapse="expanded = false" />
+      <CourseInfo
+        v-if="expanded == c.id"
+        :id="c.id"
+        :allowed="c.avail"
+        @colapse="expanded = false"
+      />
       <div v-else class="row whole" @click="expand(c.id)">
         <div class="row left">
           <h3>>&nbsp;{{c.id}}</h3>
@@ -59,6 +64,8 @@ export default {
       for (let i in this.courseList.ge) {
         this.colorMap[this.courseList.ge[i]] = this.colors[i];
       }
+      const l = this.courseList.list;
+      if (l.length == 1 && l[0].expand) this.expanded = l[0].id;
       this.$forceUpdate();
     }
   },
