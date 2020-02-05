@@ -1,7 +1,7 @@
 <template>
   <div class="history-chart">
     <div class="loading" v-if="loading">loading ...</div>
-    <canvas id="history-canvas" />
+    <canvas :id="'history-canvas-'+quarter" />
     <el-slider
       v-if="maxTime&&timerange&&passtimes"
       v-model="timerange"
@@ -55,7 +55,7 @@ async function getPassInfo(q) {
 
 export default {
   name: "HistoryChart",
-  props: ["id", "codes", "disables"],
+  props: ["id", "codes", "disables", "quarter"],
   data() {
     return {
       loading: false,
@@ -68,9 +68,6 @@ export default {
       maxTime: null,
       passtimes: null
     };
-  },
-  computed: {
-    ...mapState(["quarter"])
   },
   mounted() {
     this.expandedList = this.codes.map(e => e[0]);
@@ -92,7 +89,6 @@ export default {
         console.log(error);
         swal("ERROR", "Server Response Error", "error");
       }
-
       const qinfo = await getPassInfo(this.quarter);
       if (resp && qinfo) {
         this.processData(resp.data, qinfo);
@@ -199,7 +195,9 @@ export default {
     },
 
     putOnChart() {
-      var ctx = document.getElementById("history-canvas").getContext("2d");
+      var ctx = document
+        .getElementById("history-canvas-" + this.quarter)
+        .getContext("2d");
       this.chart = new Chart(ctx, {
         type: "line",
         data: this.res,

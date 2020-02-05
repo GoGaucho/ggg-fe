@@ -23,15 +23,16 @@
         <strong>GE :</strong>
         {{GEs}}
       </div>
-      <el-collapse>
-        <el-collapse-item title="Enroll History (This Quarter)">
-          <HistoryChart ref="hist" :id="id" :codes="codes" :disables="disables" />
-        </el-collapse-item>
-      </el-collapse>
-      <template v-if="ress">
-        <div v-for="res in ress" v-bind:key="res.ses">
-          <h3 v-if="res.ses.length">Session {{res.ses}}</h3>
-          <TimeTable v-bind:res="res.res" @click-row="clickrow" @click-exp="clickexp" />
+      <SubCourseInfo :quarter="quarter" :course="course" :id="id" :allowed="allowed" />
+      <el-button
+        v-if="!allowed&&!prevRess"
+        :loading="loadHist"
+        @click="loadPrevHist()"
+      >Previous Quarters</el-button>
+      <template v-if="prevRess">
+        <div v-for="ress in prevRess" v-bind:key="ress.q">
+          <h2>{{ress.qname}}</h2>
+          <SubCourseInfo :quarter="ress.q" :course="ress.data" :id="id" />
         </div>
       </template>
     </div>
@@ -40,14 +41,14 @@
 
 <script>
 import { mapState, mapMutations } from "vuex";
-import TimeTable from "@/components/TimeTable.vue";
-import HistoryChart from "@/components/HistoryChart.vue";
+import SubCourseInfo from "@/components/SubCourseInfo.vue";
+
+const qs = ["", "Winter", "Spring", "Summer", "Fall"];
 
 export default {
   name: "CourseInfo",
   components: {
-    TimeTable,
-    HistoryChart
+    SubCourseInfo
   },
   props: ["id", "allowed"],
   data() {
@@ -60,7 +61,9 @@ export default {
       course: null,
       gradingOption: "",
       units: "",
-      GEs: ""
+      GEs: "",
+      loadHist: false,
+      prevRess: null
     };
   },
   computed: {
@@ -93,8 +96,7 @@ export default {
         });
     },
 
-    getData() {
-      const c = this.course;
+    getRess(c, disables) {
       let ress = [];
       let res = [];
       let ses = "";
@@ -119,7 +121,7 @@ export default {
         let ss = {};
         ss.enrollCode = s.enrollCode;
         ss.disabled = s.courseCancelled || s.classClosed;
-        if (ss.disabled) this.disables.push(ss.enrollCode);
+        if (disables && ss.disabled) disables.push(ss.enrollCode);
         ss.max = s.maxEnroll;
         ss.space = s.maxEnroll - s.enrolledTotal;
 
@@ -167,29 +169,43 @@ export default {
         }
       }
       if (res.length > 0) ress.push({ ses: ses, res: res });
+      return ress;
+    },
 
-      if (this.allowed) {
-        for (var ires of ress) {
-          for (var lec of ires.res) {
-            let disa = !this.allowed.includes(lec.enrollCode);
-            for (var sec of lec.children) {
-              sec.conflict = sec.disabled = !this.allowed.includes(
-                sec.enrollCode
-              );
-              disa &= sec.conflict;
-            }
-            lec.conflict = lec.disabled = disa;
-          }
-        }
-      }
-
-      this.ress = ress;
-
-      this.codes = this.ress
+    getCodes(ress) {
+      return ress
         .map(res =>
           res.res.map(e => [e.enrollCode, e.children.map(x => x.enrollCode)])
         )
         .flat();
+    },
+
+    loadPrevHist: async function() {
+      this.loadHist = true;
+      try {
+        const resp = await axios({
+          method: "get",
+          url: `/api/sche/getClassHistByID?id=${this.id}`
+        });
+        const prevRess = [];
+        for (var c of resp.data) {
+          if (c.q == this.quarter) continue;
+          prevRess.push({
+            q: c.q,
+            qname: c.q.substring(0, 4) + qs[+c.q.substring(4)],
+            data: c.data
+          });
+        }
+        this.prevRess = prevRess;
+      } catch (error) {
+        console.log(error);
+        swal("ERROR", "Network Error", "error");
+      }
+      this.loadHist = false;
+    },
+
+    getData() {
+      const c = this.course;
 
       this.gradingOption = (a =>
         !a ? "Optional" : a == "L" ? "Letter" : "Pass / No Pass")(
@@ -206,98 +222,6 @@ export default {
           : ge
               .map(e => `${e.geCode}(${e.geCollege})`.replace(/\s/g, ""))
               .join(",    "))(c.generalEducation);
-      this.getProfRatings();
-    },
-
-    getProfRatings: async function() {
-      const rater = (lec, rs) => {
-        rs = rs.filter(r => r.rate || r.diff);
-        if (!rs || rs.length == 0) {
-          lec.rate = "not found";
-          return;
-        }
-        if (rs.length > 1) {
-          lec.rate = "multiple...";
-          rs.forEach(r => {
-            if (!r.rate) r.rate = "X";
-            if (!r.diff) r.diff = "X";
-          });
-          lec.rateToolTip = {
-            data: rs,
-            msg: "Multiple profs with this name found"
-          };
-          return;
-        }
-        const r = rs[0];
-        const rr = r.rate ? r.rate : "X";
-        const rd = r.diff ? r.diff : "X";
-        lec.rate = `${rr}/${rd}`;
-        lec.rateToolTip = {
-          msg: `Name: ${r.name}, Deptartment: ${r.dept}`,
-          link: r.rmpid
-        };
-      };
-      for (let res of this.ress) {
-        for (let lec of res.res) {
-          if (lec.instructor && lec.instructor != "T.B.A") {
-            if (this.rate[lec.instructor] === undefined) {
-              let resp = null;
-              try {
-                resp = await axios({
-                  method: "get",
-                  url: `/api/rmp?prof=${lec.instructor}`
-                });
-              } catch (error) {
-                console.log(error);
-              }
-              if (resp) {
-                const r = resp.data;
-                this.rate[lec.instructor] = r ? r : null;
-                rater(lec, r);
-              }
-            } else rater(lec, this.rate[lec.instructor]);
-          } else lec.rate = "";
-        }
-      }
-    },
-
-    loadHistory() {
-      new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
-          datasets: [
-            {
-              label: "History of courses",
-              data: [12, 19, 3, 5, 2, 3],
-              borderWidth: 1
-            }
-          ]
-        },
-        options: {
-          scales: {
-            yAxes: [
-              {
-                ticks: {
-                  beginAtZero: true
-                }
-              }
-            ]
-          }
-        }
-      });
-    },
-
-    clickrow(row) {
-      this.$refs.hist.showOnly(row.enrollCode);
-    },
-
-    clickexp(row, expanded) {
-      this.$refs.hist.expand(
-        row.enrollCode,
-        row.children.map(e => e.enrollCode),
-        expanded
-      );
     }
   }
 };
