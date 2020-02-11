@@ -185,7 +185,8 @@ export default {
               id: id,
               p: p,
               cs: [e],
-              key: `${id}-${count[id]}`
+              key: `${id}-${count[id]}`,
+              lec: p[3]
             };
             s.set[key] = dat;
             s.list.push(dat);
@@ -198,7 +199,15 @@ export default {
       s.list.forEach(e => {
         e.code = e.cs.length > 1 ? ` (${e.cs.length})` : "";
         if (e.cs.length == 1) {
-          const insts = this.courseDetails.map[e.cs[0]].instructors;
+          let csec = this.courseDetails.map[e.cs[0]];
+          const secc = +csec.section;
+          if (e.lec == "L" && secc % 100 != 0) {
+            const lecc = secc - (secc % 100);
+            const rev = this.courseDetails.rev[e.cs[0]];
+            const s2c = this.courseDetails.s2c[rev][lecc];
+            csec = this.courseDetails.map[s2c];
+          }
+          const insts = csec.instructors;
           e.ins =
             insts.length == 0
               ? "Prof: T.B.A"

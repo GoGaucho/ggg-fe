@@ -94,7 +94,7 @@ function getSession(ses) {
 
 function getCoursePeriods(lec, sec) {
   const periods = [];
-  const adder = tls => {
+  const adder = (tls, type) => {
     for (let tl of tls.timeLocations) {
       if (tl.days == null) continue;
       const days = tl.days.replace(/\s*/g, "");
@@ -105,15 +105,16 @@ function getCoursePeriods(lec, sec) {
           periods.push([
             daytime2num(d, tl.beginTime, s),
             daytime2num(d, tl.endTime, s),
-            loc
+            loc,
+            type
           ]);
     }
   };
 
   if (!lec.timeLocations.length) return [];
-  adder(lec);
+  adder(lec, "L");
   if (!sec || !sec.timeLocations.length) return periods;
-  adder(sec);
+  adder(sec, "S");
   return periods;
 }
 
