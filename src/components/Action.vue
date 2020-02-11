@@ -8,8 +8,8 @@
     >{{buttonTip}}</el-button>
     <el-button round style="width: 80%; margin-bottom: 20px;" @click="back">back</el-button>
     <div class="copyright">
-      &copy; GoGaucho 2019
-      <br />Powered by Phantomlsh
+      &copy; GoGaucho 2020
+      <br />Powered by Phantomlsh and lcy0x1
       <br />All rights reserved.
     </div>
     <div class="feedback" @click="feedback">Feedback</div>
