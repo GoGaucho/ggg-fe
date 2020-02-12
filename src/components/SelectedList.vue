@@ -63,6 +63,7 @@ export default {
 <style scoped>
 div.selected-list {
   width: 240px;
+  min-width: 220px;
   height: auto;
   min-height: 280px;
   margin: 20px;
