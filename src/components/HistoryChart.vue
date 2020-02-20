@@ -105,12 +105,20 @@ export default {
         e.zero = -1;
         e.min = e.data[0].date;
         e.max = e.data[0].date;
+        const tl = [];
         for (let x in e.data) {
           e.min = Math.min(e.min, e.data[x].date);
           e.max = Math.max(e.max, e.data[x].date);
           if (e.data[x].sp == 0 && e.zero == -1) e.zero = +x;
           if (e.data[x].sp > 1 && e.zero >= 0) e.zero = -1; // Threshold = 1
+          if (
+            tl.length > 0 &&
+            e.data[x].date - tl[tl.length - 1].date > 6 * 3600
+          )
+            tl.push({ date: e.data[x].date - 1800, sp: tl[tl.length - 1].sp });
+          tl.push(e.data[x]);
         }
+        e.data = tl;
         gmin = Math.min(gmin, e.min);
         gmax = Math.max(gmax, e.max);
       }
@@ -125,11 +133,13 @@ export default {
       this.data = data;
       const tmin = Math.floor(gmin / 86400);
       const tmax = Math.floor(gmax / 86400);
+      const p1 = Math.floor(+qinfo[0] / 86400000);
       const p2 = Math.floor(+qinfo[1] / 86400000);
       const p3 = Math.floor(+qinfo[2] / 86400000);
       this.maxTime = [tmin, tmax, tmax - tmin];
       this.timerange = [0, this.maxTime[2]];
       const pts = {};
+      pts[p1 - tmin] = "pass 1";
       pts[p2 - tmin] = "pass 2";
       pts[p3 - tmin] = "pass 3";
       this.passtimes = pts;
@@ -203,7 +213,10 @@ export default {
         data: this.res,
         options: {
           hover: { mode: "dataset" },
-          scales: { xAxes: [{ type: "time", time: { unit: "day" } }] }
+          scales: {
+            xAxes: [{ type: "time", time: { unit: "day" } }],
+            yAxes: [{ ticks: { beginAtZero: true } }]
+          }
         }
       });
     },
